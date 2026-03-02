@@ -11,6 +11,7 @@ on:
         options:
           - fetch_stats
           - build_factors
+          - run_model
           - identify
 
 permissions:
@@ -33,6 +34,10 @@ jobs:
         if: inputs.step == 'fetch_stats'
         run: pip install pybaseball
 
+      - name: Install PyMC + ArviZ (run_model only)
+        if: inputs.step == 'run_model'
+        run: pip install -r requirements-model.txt
+
       - name: Fetch previous-league stats via pybaseball
         if: inputs.step == 'fetch_stats'
         run: python scripts/fetch_prev_stats.py
@@ -45,21 +50,25 @@ jobs:
         if: inputs.step == 'build_factors'
         run: python src/build_conversion_factors.py
 
+      - name: Run Bayesian model
+        if: inputs.step == 'run_model'
+        run: python src/bayesian_model.py --draws 2000 --tune 1000
+
       - name: Commit results to repo
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/foreign/
+          git add data/
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "CI: ${{ inputs.step }} — update foreign player data"
+            git commit -m "CI: ${{ inputs.step }} — update data"
             git push
           fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: foreign-player-data
-          path: data/foreign/
+          name: model-output
+          path: data/
           retention-days: 30
