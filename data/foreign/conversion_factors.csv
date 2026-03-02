@@ -1,0 +1,6 @@
+origin_league,wOBA_n,wOBA_median,wOBA_mean,wOBA_std,wOBA_ci_low,wOBA_ci_high,ERA_n,ERA_median,ERA_mean,ERA_std,ERA_ci_low,ERA_ci_high,FIP_n,FIP_median,FIP_mean,FIP_std,FIP_ci_low,FIP_ci_high,ERA_note,FIP_note,wOBA_note
+AAA,9,1.2705,1.2579,0.2834,1.0063,1.4716,6,0.4619,0.4651,0.2352,0.2484,0.6851,6,0.6417,0.6141,0.2588,0.3564,0.8443,,,
+CPBL,0,,,,,,1,0.6391,,,,,1,0.7566,,,,,too few samples for CI,too few samples for CI,
+Independent,4,1.7532,1.8838,0.3702,1.6066,2.4221,1,0.5426,,,,,1,0.6545,,,,,too few samples for CI,too few samples for CI,
+KBO,1,1.4710,,,,,1,1.4494,,,,,1,1.0121,,,,,too few samples for CI,too few samples for CI,too few samples for CI
+MLB,56,1.2353,1.3129,0.5171,1.1409,1.3215,74,0.5789,0.6646,0.3076,0.5080,0.6677,74,0.7357,0.7541,0.2644,0.6347,0.8102,,,
