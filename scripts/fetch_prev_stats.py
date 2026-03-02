@@ -28,6 +28,16 @@ OUTPUT = ROOT / "data" / "foreign" / "foreign_prev_stats.csv"
 MIN_PA = 30
 MIN_IP = 10.0
 
+# Max years to look back from NPB entry
+MAX_LOOKBACK = 6
+
+# Name aliases: master CSV name → FanGraphs name
+# For players whose name order or spelling differs between sources
+NAME_ALIASES: dict[str, str] = {
+    "Chen Wei-Yin": "Wei-Yin Chen",
+    "Wily Mo Pena": "Wily Mo Peña",
+}
+
 
 def normalize_name(name: str) -> str:
     """Normalize player name for fuzzy matching."""
@@ -147,12 +157,12 @@ def main() -> None:
     print(f"Total players: {len(master)}")
     print(f"Eligible (has english_name): {len(eligible)}")
 
-    # Determine years needed: npb_first_year - 1, -2, -3 (fallback)
+    # Determine years needed: npb_first_year - 1 to -MAX_LOOKBACK (fallback)
     years_needed: set[int] = set()
     for p in eligible:
         try:
             y = int(p["npb_first_year"])
-            for offset in range(1, 4):
+            for offset in range(1, MAX_LOOKBACK + 1):
                 years_needed.add(y - offset)
         except ValueError:
             pass
@@ -177,11 +187,13 @@ def main() -> None:
         except ValueError:
             continue
 
-        norm_name = normalize_name(english_name)
+        # Apply name alias if exists, then normalize for FanGraphs matching
+        lookup_name = NAME_ALIASES.get(english_name, english_name)
+        norm_name = normalize_name(lookup_name)
 
-        # Try year-1 first, then year-2, then year-3
+        # Try year-1 first, then year-2, ... up to MAX_LOOKBACK
         found = False
-        for offset in range(1, 4):
+        for offset in range(1, MAX_LOOKBACK + 1):
             search_year = first_year - offset
 
             if player_type == "hitter":
