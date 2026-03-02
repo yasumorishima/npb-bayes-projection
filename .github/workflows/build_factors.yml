@@ -6,11 +6,15 @@ on:
       step:
         description: 'Which step to run'
         required: true
-        default: 'identify'
+        default: 'fetch_stats'
         type: choice
         options:
-          - identify
+          - fetch_stats
           - build_factors
+          - identify
+
+permissions:
+  contents: write
 
 jobs:
   run:
@@ -22,11 +26,16 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          # pybaseball is only needed for MLB stats fetching
-          # pip install pybaseball
+      - name: Install base dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install pybaseball (fetch_stats only)
+        if: inputs.step == 'fetch_stats'
+        run: pip install pybaseball
+
+      - name: Fetch previous-league stats via pybaseball
+        if: inputs.step == 'fetch_stats'
+        run: python scripts/fetch_prev_stats.py
 
       - name: Run identify_foreign_players
         if: inputs.step == 'identify'
@@ -35,6 +44,18 @@ jobs:
       - name: Run build_conversion_factors
         if: inputs.step == 'build_factors'
         run: python src/build_conversion_factors.py
+
+      - name: Commit results to repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/foreign/
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "CI: ${{ inputs.step }} — update foreign player data"
+            git push
+          fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
