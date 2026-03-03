@@ -17,6 +17,8 @@ on:
           - patch_conflicts
           - team_sim
           - team_backtest
+          - run_jpn_model
+          - team_compare
 
 permissions:
   contents: write
@@ -46,8 +48,8 @@ jobs:
         if: inputs.step == 'run_model'
         run: pip install "pymc>=5.0" "arviz>=0.15"
 
-      - name: Install cmdstanpy + ArviZ (run_stan_model only)
-        if: inputs.step == 'run_stan_model'
+      - name: Install cmdstanpy + ArviZ (run_stan_model / run_jpn_model)
+        if: inputs.step == 'run_stan_model' || inputs.step == 'run_jpn_model'
         run: |
           pip install -r requirements-model.txt
           python -c "from cmdstanpy import install_cmdstan; install_cmdstan()"
@@ -83,6 +85,14 @@ jobs:
       - name: Run team standings backtest (2018-2025, N=10000)
         if: inputs.step == 'team_backtest'
         run: python src/team_sim.py --n_sim 10000 --backtest
+
+      - name: Run Japanese player Stan model (K%/BB% correction, 2022-2025 backtest)
+        if: inputs.step == 'run_jpn_model'
+        run: python src/stan_jpn_model.py --draws 2000 --warmup 1000
+
+      - name: Run team-level Marcel vs Stan comparison
+        if: inputs.step == 'team_compare'
+        run: python src/team_compare.py
 
       - name: Commit results to repo
         run: |
