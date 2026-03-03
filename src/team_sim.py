@@ -68,6 +68,7 @@ def load_marcel() -> tuple[pd.DataFrame, pd.DataFrame]:
 def normalize_hitter_pa(hitters: pd.DataFrame) -> pd.DataFrame:
     """Scale each team's total projected PA to NPB_TARGET_PA (≈ 143g × 37PA/g)."""
     hitters = hitters.copy()
+    hitters["PA"] = hitters["PA"].astype(float)
     for team, grp in hitters.groupby("team"):
         total_pa = grp["PA"].sum()
         if total_pa > 0:
