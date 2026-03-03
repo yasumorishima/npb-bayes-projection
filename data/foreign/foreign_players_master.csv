@@ -96,6 +96,7 @@ npb_name,english_name,origin_league,origin_country,npb_first_year,first_team,pla
 コラス,Oscar Colás,Cuba,Cuba,2018,ソフトバンク,hitter,,,,,,,,,
 コラレス,Josh Corrales,Independent,USA,2017,楽天,pitcher,,,,,,,15.00,3.0,3.67
 コルデロ,Remy Moise Cordero,Independent,Dominican Republic,2019,DeNA,hitter,投手,,,,,,,,
+コルデロ,Franchy Cordero,MLB,,2024,西武,hitter,,,73,0.129,,0.16297273229450704,,,
 コルニエル,Robert Corniel,MiLB,Dominican Republic,2020,広島,pitcher,投手,,,,,,,,
 コーク,Phil Coke,MLB,USA,2017,,pitcher,,,,,,,4.56,23.2,1.69
 コーディエ,Erik Cordier,MLB,USA,2016,,pitcher,,,,,,,7.3,12.1,2.11
@@ -313,6 +314,7 @@ npb_name,english_name,origin_league,origin_country,npb_first_year,first_team,pla
 メネズ,Conner Menez,MLB,USA,2022,日本ハム,pitcher,,,,,,,1.08,25.0,1.08
 メネセス,Joey Meneses,AAA,Mexico,2019,オリックス,hitter,,,118,0.206,0.651,0.2939,,,
 メヒア,Alejandro Mejia,MiLB,Panama,2015,広島,hitter,投手,,525,0.235,0.778,0.3537,,,
+メヒア,Francisco Mejia,MLB,,2023,中日,hitter,,,,,,,2.23,44.1,1.11
 メルセデス,C.C. Mercedes,AAA,Dominican Republic,2018,巨人,pitcher,投手,,,,,,2.05,92.0,0.92
 メンデス,Yohander Méndez,Independent,Venezuela,2017,巨人,pitcher,投手,,,,,,6.52,9.2,1.55
 メンドーサ,Luis Mendoza,MLB,Mexico,2015,,pitcher,,,,,,,3.00,3.0,1.33
