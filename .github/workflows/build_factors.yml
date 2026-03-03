@@ -15,6 +15,7 @@ on:
           - run_stan_model
           - identify
           - patch_conflicts
+          - team_sim
 
 permissions:
   contents: write
@@ -73,6 +74,10 @@ jobs:
       - name: Patch master conflicts (detect same-katakana different-player)
         if: inputs.step == 'patch_conflicts'
         run: python scripts/patch_master_conflicts.py
+
+      - name: Run team standings simulation (Monte Carlo, N=10000)
+        if: inputs.step == 'team_sim'
+        run: python src/team_sim.py --n_sim 10000
 
       - name: Commit results to repo
         run: |
