@@ -37,6 +37,10 @@ NPB_HIST_RS   = 535.0        # historical NPB avg RS per team (2015-2024)
 SIGMA_OPS = 0.063            # Marcel OPS MAE -> per-player sigma
 SIGMA_ERA = 0.78             # Marcel ERA MAE -> per-player sigma
 
+# ── Team-level RS/RA uncertainty (measured from Marcel team backtest 2018-2025) ─
+SIGMA_RS_HIST = 64.2         # std(pred_RS - actual_RS), 96 team-years
+SIGMA_RA_HIST = 62.5         # std(pred_RA - actual_RA), 96 team-years
+
 # ── RS calibration ─────────────────────────────────────────────────────────────
 # After normalizing PA to NPB_TARGET_PA, avg OPS×PA = 0.6734 × 5300 = 3569
 # K_HIT = NPB_HIST_RS / avg_OPS_PA = 535 / 3569 = 0.1499
@@ -63,6 +67,17 @@ def load_marcel() -> tuple[pd.DataFrame, pd.DataFrame]:
     hitters = pd.read_csv(f"{NPBP_BASE}/marcel_hitters_2026.csv", encoding="utf-8-sig")
     pitchers = pd.read_csv(f"{NPBP_BASE}/marcel_pitchers_2026.csv", encoding="utf-8-sig")
     return hitters, pitchers
+
+
+def load_historical() -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Load Marcel team-level historical projections and actual results."""
+    hist = pd.read_csv(f"{NPBP_BASE}/marcel_team_historical.csv", encoding="utf-8-sig")
+    actual = pd.read_csv(
+        "https://raw.githubusercontent.com/yasumorishima/npb-prediction/main"
+        "/data/projections/pythagorean_2015_2025.csv",
+        encoding="utf-8-sig",
+    )
+    return hist, actual
 
 
 def normalize_hitter_pa(hitters: pd.DataFrame) -> pd.DataFrame:
@@ -167,6 +182,101 @@ def compute_probabilities(wins_sim: dict[str, np.ndarray]) -> dict[str, dict]:
     return results
 
 
+def run_backtest(n_sim: int = N_SIM, seed: int = 42) -> None:
+    """Validate team-level simulation against 2018-2025 Marcel team projections."""
+    print("Loading historical Marcel team projections...")
+    hist, actual = load_historical()
+
+    # Merge on year + team (inner join; marcel_team_historical covers 2018-2025)
+    merged = hist.merge(
+        actual[["year", "team", "league", "G", "W", "RS", "RA"]],
+        on=["year", "team"],
+        how="inner",
+        suffixes=("_h", ""),
+    )
+    # resolve league column (hist may also have league)
+    if "league_h" in merged.columns:
+        merged = merged.rename(columns={"league": "league", "league_h": "league_hist"})
+        merged["league"] = merged["league"].fillna(merged["league_hist"])
+    print(f"  Matched: {len(merged)} team-years ({merged['year'].nunique()} seasons)")
+
+    rng = np.random.default_rng(seed)
+
+    rows = []
+    for _, row in merged.iterrows():
+        pred_rs = float(row["pred_RS"])
+        pred_ra = float(row["pred_RA"])
+        g = int(row["G"])
+        actual_w = float(row["W"])
+
+        rs_sim = np.clip(rng.normal(pred_rs, SIGMA_RS_HIST, n_sim), 1.0, None)
+        ra_sim = np.clip(rng.normal(pred_ra, SIGMA_RA_HIST, n_sim), 1.0, None)
+        rs_exp = np.power(rs_sim, NPB_PYTH_EXP)
+        ra_exp = np.power(ra_sim, NPB_PYTH_EXP)
+        wins_sim = rs_exp / (rs_exp + ra_exp) * g
+
+        median_w = float(np.median(wins_sim))
+        ci_lo = float(np.percentile(wins_sim, 10))
+        ci_hi = float(np.percentile(wins_sim, 90))
+
+        rows.append({
+            "year":        int(row["year"]),
+            "league":      str(row.get("league", "")),
+            "team":        row["team"],
+            "pred_RS":     round(pred_rs, 1),
+            "pred_RA":     round(pred_ra, 1),
+            "actual_W":    actual_w,
+            "actual_RS":   float(row["RS"]),
+            "actual_RA":   float(row["RA"]),
+            "median_wins": round(median_w, 1),
+            "ci_lo":       round(ci_lo, 1),
+            "ci_hi":       round(ci_hi, 1),
+            "covered":     bool(ci_lo <= actual_w <= ci_hi),
+            "error":       round(median_w - actual_w, 1),
+        })
+
+    df = pd.DataFrame(rows)
+    mae      = float(df["error"].abs().mean())
+    bias     = float(df["error"].mean())
+    coverage = float(df["covered"].mean())
+
+    print(f"\n── Backtest Results (2018-2025, n={len(df)}) ──────────────────────")
+    print(f"  Point prediction MAE : {mae:.2f} wins")
+    print(f"  Prediction bias      : {bias:+.2f} wins")
+    print(f"  80% CI coverage      : {coverage:.1%}  (target ≈ 80%)")
+
+    print(f"\n{'Year':>6}  {'MAE':>5}  {'Bias':>6}  {'Coverage':>8}  {'N':>3}")
+    for yr, grp in df.groupby("year"):
+        print(
+            f"  {yr}  {grp['error'].abs().mean():5.2f}"
+            f"  {grp['error'].mean():+6.2f}"
+            f"  {grp['covered'].mean():8.1%}"
+            f"  {len(grp):3d}"
+        )
+
+    # Save JSON
+    summary = {
+        "mae":          round(mae, 3),
+        "bias":         round(bias, 3),
+        "coverage_80ci": round(coverage, 4),
+        "n":            len(df),
+        "years":        sorted(df["year"].unique().tolist()),
+        "sigma_rs":     SIGMA_RS_HIST,
+        "sigma_ra":     SIGMA_RA_HIST,
+        "detail":       rows,
+    }
+    json_path = OUT_DIR / "backtest_results.json"
+    json_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"\nSaved -> {json_path}")
+
+    # Save CSV
+    (
+        df.sort_values(["year", "league", "team"])
+        .to_csv(OUT_DIR / "backtest_results.csv", index=False, encoding="utf-8-sig")
+    )
+    print(f"Saved -> {OUT_DIR / 'backtest_results.csv'}")
+
+
 def main(n_sim: int = N_SIM) -> None:
     print("Loading Marcel 2026 projections from npb-prediction...")
     hitters, pitchers = load_marcel()
@@ -225,5 +335,10 @@ def main(n_sim: int = N_SIM) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--n_sim", type=int, default=N_SIM)
+    parser.add_argument("--backtest", action="store_true",
+                        help="Run historical backtest (2018-2025) instead of 2026 forecast")
     args = parser.parse_args()
-    main(args.n_sim)
+    if args.backtest:
+        run_backtest(args.n_sim)
+    else:
+        main(args.n_sim)

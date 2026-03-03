@@ -16,6 +16,7 @@ on:
           - identify
           - patch_conflicts
           - team_sim
+          - team_backtest
 
 permissions:
   contents: write
@@ -78,6 +79,10 @@ jobs:
       - name: Run team standings simulation (Monte Carlo, N=10000)
         if: inputs.step == 'team_sim'
         run: python src/team_sim.py --n_sim 10000
+
+      - name: Run team standings backtest (2018-2025, N=10000)
+        if: inputs.step == 'team_backtest'
+        run: python src/team_sim.py --n_sim 10000 --backtest
 
       - name: Commit results to repo
         run: |
