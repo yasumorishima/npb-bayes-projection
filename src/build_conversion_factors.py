@@ -145,6 +145,8 @@ def compute_conversion_factors(
             "origin_league": origin_league,
             "npb_first_year": first_year,
             "player_type": player_type,
+            "prev_K_pct": prev.get("K_pct", ""),
+            "prev_BB_pct": prev.get("BB_pct", ""),
         }
 
         # Hitter: wOBA ratio
@@ -201,10 +203,13 @@ def compute_conversion_factors(
                         league_ratios[origin_league]["FIP"].append(fip_ratio)
                     except ValueError:
                         pass
+                if "prev_FIP" not in detail:
+                    detail["prev_FIP"] = prev.get("FIP", "")
             else:
                 detail["prev_ERA"] = prev.get("ERA", "")
                 detail["npb_first_ERA"] = ""
                 detail["ERA_ratio"] = ""
+                detail["prev_FIP"] = prev.get("FIP", "")
 
         player_details.append(detail)
 

@@ -12,6 +12,7 @@ on:
           - fetch_stats
           - build_factors
           - run_model
+          - run_stan_model
           - identify
 
 permissions:
@@ -36,7 +37,13 @@ jobs:
 
       - name: Install PyMC + ArviZ (run_model only)
         if: inputs.step == 'run_model'
-        run: pip install -r requirements-model.txt
+        run: pip install "pymc>=5.0" "arviz>=0.15"
+
+      - name: Install cmdstanpy + ArviZ (run_stan_model only)
+        if: inputs.step == 'run_stan_model'
+        run: |
+          pip install -r requirements-model.txt
+          python -c "from cmdstanpy import install_cmdstan; install_cmdstan()"
 
       - name: Fetch previous-league stats via pybaseball
         if: inputs.step == 'fetch_stats'
@@ -50,9 +57,13 @@ jobs:
         if: inputs.step == 'build_factors'
         run: python src/build_conversion_factors.py
 
-      - name: Run Bayesian model
+      - name: Run Bayesian model (PyMC)
         if: inputs.step == 'run_model'
         run: python src/bayesian_model.py --draws 2000 --tune 1000
+
+      - name: Run Stan model
+        if: inputs.step == 'run_stan_model'
+        run: python src/stan_model.py --draws 2000 --warmup 1000
 
       - name: Commit results to repo
         run: |

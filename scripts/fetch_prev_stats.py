@@ -215,8 +215,8 @@ def main() -> None:
                             "IP": "",
                             "ERA": "",
                             "FIP": "",
-                            "K_pct": "",
-                            "BB_pct": "",
+                            "K_pct": safe_pct(row.get("K%")),
+                            "BB_pct": safe_pct(row.get("BB%")),
                             "WHIP": "",
                         }
                     )
