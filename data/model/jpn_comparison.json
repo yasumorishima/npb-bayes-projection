@@ -3,7 +3,7 @@
     "mae_marcel": 0.0378,
     "mae_stan": 0.0382,
     "delta_mae": 0.0004,
-    "delta_K": -0.0027,
+    "delta_K": -0.0028,
     "delta_BB": -0.003,
     "n_test": 678,
     "feature_means": {
@@ -19,7 +19,7 @@
     "mae_marcel": 0.9368,
     "mae_stan": 0.9331,
     "delta_mae": -0.0037,
-    "delta_K": -0.1336,
+    "delta_K": -0.1329,
     "delta_BB": -0.0685,
     "n_test": 582,
     "feature_means": {
