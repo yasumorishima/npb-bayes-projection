@@ -2,425 +2,425 @@
   "years": [
     {
       "year": 2018,
-      "pa_cov_pct": 77.2,
-      "ip_cov_pct": 67.9,
+      "pa_cov_pct": 95.3,
+      "ip_cov_pct": 97.6,
       "total_pa": 65768,
       "total_ip": 15291.7,
-      "missing_pa": 14978,
-      "missing_ip": 4902.0,
+      "missing_pa": 3066,
+      "missing_ip": 362.7,
       "hitter_categories": {
         "foreign_1st": {
-          "pa": 1837,
-          "pct_of_total": 2.8,
-          "n": 17
+          "pa": 97,
+          "pct_of_total": 0.1,
+          "n": 9
         },
         "rookie": {
-          "pa": 3998,
-          "pct_of_total": 6.1,
-          "n": 76
+          "pa": 549,
+          "pct_of_total": 0.8,
+          "n": 55
         },
         "below_threshold": {
-          "pa": 3860,
-          "pct_of_total": 5.9,
-          "n": 112
+          "pa": 424,
+          "pct_of_total": 0.6,
+          "n": 66
         },
         "other": {
-          "pa": 5283,
-          "pct_of_total": 8.0,
-          "n": 83
+          "pa": 1996,
+          "pct_of_total": 3.0,
+          "n": 66
         }
       },
       "pitcher_categories": {
         "foreign_1st": {
-          "ip": 1145.3,
-          "pct_of_total": 7.5,
-          "n": 21
+          "ip": 28.0,
+          "pct_of_total": 0.2,
+          "n": 5
         },
         "rookie": {
-          "ip": 1430.0,
-          "pct_of_total": 9.4,
-          "n": 50
+          "ip": 63.0,
+          "pct_of_total": 0.4,
+          "n": 19
         },
         "below_threshold": {
-          "ip": 915.7,
-          "pct_of_total": 6.0,
-          "n": 45
+          "ip": 53.3,
+          "pct_of_total": 0.3,
+          "n": 14
         },
         "other": {
-          "ip": 1411.0,
-          "pct_of_total": 9.2,
-          "n": 79
+          "ip": 218.3,
+          "pct_of_total": 1.4,
+          "n": 38
         }
       }
     },
     {
       "year": 2019,
-      "pa_cov_pct": 78.1,
-      "ip_cov_pct": 66.5,
+      "pa_cov_pct": 95.5,
+      "ip_cov_pct": 97.3,
       "total_pa": 65589,
       "total_ip": 15334.7,
-      "missing_pa": 14344,
-      "missing_ip": 5134.3,
+      "missing_pa": 2944,
+      "missing_ip": 410.0,
       "hitter_categories": {
         "foreign_1st": {
-          "pa": 1354,
-          "pct_of_total": 2.1,
-          "n": 15
+          "pa": 16,
+          "pct_of_total": 0.0,
+          "n": 8
         },
         "rookie": {
-          "pa": 4393,
-          "pct_of_total": 6.7,
-          "n": 82
+          "pa": 683,
+          "pct_of_total": 1.0,
+          "n": 61
         },
         "below_threshold": {
-          "pa": 4448,
-          "pct_of_total": 6.8,
-          "n": 138
+          "pa": 593,
+          "pct_of_total": 0.9,
+          "n": 85
         },
         "other": {
-          "pa": 4149,
-          "pct_of_total": 6.3,
-          "n": 82
+          "pa": 1652,
+          "pct_of_total": 2.5,
+          "n": 66
         }
       },
       "pitcher_categories": {
         "foreign_1st": {
-          "ip": 448.3,
-          "pct_of_total": 2.9,
-          "n": 15
+          "ip": 22.3,
+          "pct_of_total": 0.1,
+          "n": 5
         },
         "rookie": {
-          "ip": 1542.3,
-          "pct_of_total": 10.1,
-          "n": 55
+          "ip": 68.7,
+          "pct_of_total": 0.4,
+          "n": 18
         },
         "below_threshold": {
-          "ip": 1386.7,
-          "pct_of_total": 9.0,
-          "n": 50
+          "ip": 54.7,
+          "pct_of_total": 0.4,
+          "n": 14
         },
         "other": {
-          "ip": 1757.0,
-          "pct_of_total": 11.5,
-          "n": 92
+          "ip": 264.3,
+          "pct_of_total": 1.7,
+          "n": 51
         }
       }
     },
     {
       "year": 2020,
-      "pa_cov_pct": 76.2,
-      "ip_cov_pct": 66.8,
+      "pa_cov_pct": 95.9,
+      "ip_cov_pct": 97.2,
       "total_pa": 54171,
       "total_ip": 12680.7,
-      "missing_pa": 12876,
-      "missing_ip": 4210.0,
+      "missing_pa": 2237,
+      "missing_ip": 355.3,
       "hitter_categories": {
         "foreign_1st": {
-          "pa": 2929,
-          "pct_of_total": 5.4,
-          "n": 15
+          "pa": 67,
+          "pct_of_total": 0.1,
+          "n": 5
         },
         "rookie": {
-          "pa": 2564,
-          "pct_of_total": 4.7,
-          "n": 60
+          "pa": 385,
+          "pct_of_total": 0.7,
+          "n": 41
         },
         "below_threshold": {
-          "pa": 3197,
-          "pct_of_total": 5.9,
-          "n": 108
+          "pa": 495,
+          "pct_of_total": 0.9,
+          "n": 54
         },
         "other": {
-          "pa": 4186,
-          "pct_of_total": 7.7,
-          "n": 73
+          "pa": 1290,
+          "pct_of_total": 2.4,
+          "n": 63
         }
       },
       "pitcher_categories": {
         "foreign_1st": {
-          "ip": 586.3,
-          "pct_of_total": 4.6,
-          "n": 18
+          "ip": 13.3,
+          "pct_of_total": 0.1,
+          "n": 3
         },
         "rookie": {
-          "ip": 1041.3,
-          "pct_of_total": 8.2,
-          "n": 41
+          "ip": 59.0,
+          "pct_of_total": 0.5,
+          "n": 16
         },
         "below_threshold": {
-          "ip": 938.0,
-          "pct_of_total": 7.4,
-          "n": 45
+          "ip": 47.0,
+          "pct_of_total": 0.4,
+          "n": 10
         },
         "other": {
-          "ip": 1644.3,
-          "pct_of_total": 13.0,
-          "n": 89
+          "ip": 236.0,
+          "pct_of_total": 1.9,
+          "n": 45
         }
       }
     },
     {
       "year": 2021,
-      "pa_cov_pct": 74.7,
-      "ip_cov_pct": 69.1,
+      "pa_cov_pct": 95.9,
+      "ip_cov_pct": 97.6,
       "total_pa": 63443,
       "total_ip": 15053.7,
-      "missing_pa": 16068,
-      "missing_ip": 4653.7,
+      "missing_pa": 2589,
+      "missing_ip": 365.0,
       "hitter_categories": {
         "foreign_1st": {
-          "pa": 1886,
-          "pct_of_total": 3.0,
-          "n": 15
+          "pa": 78,
+          "pct_of_total": 0.1,
+          "n": 6
         },
         "rookie": {
-          "pa": 3242,
-          "pct_of_total": 5.1,
-          "n": 61
+          "pa": 319,
+          "pct_of_total": 0.5,
+          "n": 43
         },
         "below_threshold": {
-          "pa": 5707,
-          "pct_of_total": 9.0,
-          "n": 144
+          "pa": 598,
+          "pct_of_total": 0.9,
+          "n": 73
         },
         "other": {
-          "pa": 5233,
-          "pct_of_total": 8.2,
-          "n": 89
+          "pa": 1594,
+          "pct_of_total": 2.5,
+          "n": 77
         }
       },
       "pitcher_categories": {
         "foreign_1st": {
-          "ip": 318.0,
-          "pct_of_total": 2.1,
-          "n": 9
+          "ip": 2.7,
+          "pct_of_total": 0.0,
+          "n": 1
         },
         "rookie": {
-          "ip": 1577.3,
-          "pct_of_total": 10.5,
-          "n": 46
+          "ip": 104.0,
+          "pct_of_total": 0.7,
+          "n": 20
         },
         "below_threshold": {
-          "ip": 930.3,
-          "pct_of_total": 6.2,
-          "n": 41
+          "ip": 71.7,
+          "pct_of_total": 0.5,
+          "n": 14
         },
         "other": {
-          "ip": 1828.0,
-          "pct_of_total": 12.1,
-          "n": 98
+          "ip": 186.7,
+          "pct_of_total": 1.2,
+          "n": 41
         }
       }
     },
     {
       "year": 2022,
-      "pa_cov_pct": 75.2,
-      "ip_cov_pct": 67.9,
+      "pa_cov_pct": 94.7,
+      "ip_cov_pct": 97.6,
       "total_pa": 63962,
       "total_ip": 15327.7,
-      "missing_pa": 15832,
-      "missing_ip": 4912.7,
+      "missing_pa": 3410,
+      "missing_ip": 363.0,
       "hitter_categories": {
         "foreign_1st": {
-          "pa": 3174,
-          "pct_of_total": 5.0,
-          "n": 19
+          "pa": 62,
+          "pct_of_total": 0.1,
+          "n": 6
         },
         "rookie": {
-          "pa": 2818,
-          "pct_of_total": 4.4,
-          "n": 77
+          "pa": 544,
+          "pct_of_total": 0.9,
+          "n": 57
         },
         "below_threshold": {
-          "pa": 4589,
-          "pct_of_total": 7.2,
-          "n": 135
+          "pa": 423,
+          "pct_of_total": 0.7,
+          "n": 71
         },
         "other": {
-          "pa": 5251,
-          "pct_of_total": 8.2,
-          "n": 94
+          "pa": 2381,
+          "pct_of_total": 3.7,
+          "n": 69
         }
       },
       "pitcher_categories": {
         "foreign_1st": {
-          "ip": 767.0,
-          "pct_of_total": 5.0,
-          "n": 16
+          "ip": 0.0,
+          "pct_of_total": 0.0,
+          "n": 0
         },
         "rookie": {
-          "ip": 1418.3,
-          "pct_of_total": 9.3,
-          "n": 52
+          "ip": 83.3,
+          "pct_of_total": 0.5,
+          "n": 19
         },
         "below_threshold": {
-          "ip": 1055.0,
-          "pct_of_total": 6.9,
-          "n": 48
+          "ip": 46.7,
+          "pct_of_total": 0.3,
+          "n": 10
         },
         "other": {
-          "ip": 1672.3,
-          "pct_of_total": 10.9,
-          "n": 98
+          "ip": 233.0,
+          "pct_of_total": 1.5,
+          "n": 46
         }
       }
     },
     {
       "year": 2023,
-      "pa_cov_pct": 71.6,
-      "ip_cov_pct": 68.6,
+      "pa_cov_pct": 96.5,
+      "ip_cov_pct": 98.0,
       "total_pa": 64039,
       "total_ip": 15341.7,
-      "missing_pa": 18200,
-      "missing_ip": 4813.0,
+      "missing_pa": 2270,
+      "missing_ip": 300.7,
       "hitter_categories": {
         "foreign_1st": {
-          "pa": 3701,
-          "pct_of_total": 5.8,
-          "n": 24
+          "pa": 63,
+          "pct_of_total": 0.1,
+          "n": 6
         },
         "rookie": {
-          "pa": 3873,
-          "pct_of_total": 6.0,
-          "n": 57
+          "pa": 355,
+          "pct_of_total": 0.6,
+          "n": 38
         },
         "below_threshold": {
-          "pa": 4987,
-          "pct_of_total": 7.8,
-          "n": 128
+          "pa": 526,
+          "pct_of_total": 0.8,
+          "n": 71
         },
         "other": {
-          "pa": 5639,
-          "pct_of_total": 8.8,
-          "n": 95
+          "pa": 1326,
+          "pct_of_total": 2.1,
+          "n": 66
         }
       },
       "pitcher_categories": {
         "foreign_1st": {
-          "ip": 757.0,
-          "pct_of_total": 4.9,
-          "n": 17
+          "ip": 11.0,
+          "pct_of_total": 0.1,
+          "n": 2
         },
         "rookie": {
-          "ip": 937.3,
-          "pct_of_total": 6.1,
-          "n": 38
+          "ip": 52.0,
+          "pct_of_total": 0.3,
+          "n": 12
         },
         "below_threshold": {
-          "ip": 1041.7,
-          "pct_of_total": 6.8,
-          "n": 34
+          "ip": 23.3,
+          "pct_of_total": 0.2,
+          "n": 5
         },
         "other": {
-          "ip": 2077.0,
-          "pct_of_total": 13.5,
-          "n": 103
+          "ip": 214.3,
+          "pct_of_total": 1.4,
+          "n": 40
         }
       }
     },
     {
       "year": 2024,
-      "pa_cov_pct": 79.1,
-      "ip_cov_pct": 70.6,
+      "pa_cov_pct": 95.9,
+      "ip_cov_pct": 98.0,
       "total_pa": 63761,
       "total_ip": 15375.7,
-      "missing_pa": 13354,
-      "missing_ip": 4520.7,
+      "missing_pa": 2641,
+      "missing_ip": 308.3,
       "hitter_categories": {
         "foreign_1st": {
-          "pa": 1211,
-          "pct_of_total": 1.9,
-          "n": 19
+          "pa": 85,
+          "pct_of_total": 0.1,
+          "n": 8
         },
         "rookie": {
-          "pa": 3049,
-          "pct_of_total": 4.8,
-          "n": 71
+          "pa": 341,
+          "pct_of_total": 0.5,
+          "n": 51
         },
         "below_threshold": {
-          "pa": 3415,
-          "pct_of_total": 5.4,
-          "n": 108
+          "pa": 445,
+          "pct_of_total": 0.7,
+          "n": 60
         },
         "other": {
-          "pa": 5679,
-          "pct_of_total": 8.9,
-          "n": 106
+          "pa": 1770,
+          "pct_of_total": 2.8,
+          "n": 77
         }
       },
       "pitcher_categories": {
         "foreign_1st": {
-          "ip": 972.3,
-          "pct_of_total": 6.3,
-          "n": 17
+          "ip": 5.0,
+          "pct_of_total": 0.0,
+          "n": 1
         },
         "rookie": {
-          "ip": 954.0,
-          "pct_of_total": 6.2,
-          "n": 51
+          "ip": 88.3,
+          "pct_of_total": 0.6,
+          "n": 24
         },
         "below_threshold": {
-          "ip": 945.0,
-          "pct_of_total": 6.1,
-          "n": 44
+          "ip": 30.0,
+          "pct_of_total": 0.2,
+          "n": 8
         },
         "other": {
-          "ip": 1649.3,
-          "pct_of_total": 10.7,
-          "n": 86
+          "ip": 185.0,
+          "pct_of_total": 1.2,
+          "n": 39
         }
       }
     },
     {
       "year": 2025,
-      "pa_cov_pct": 74.7,
-      "ip_cov_pct": 69.0,
+      "pa_cov_pct": 94.7,
+      "ip_cov_pct": 97.6,
       "total_pa": 62880,
       "total_ip": 15391.3,
-      "missing_pa": 15897,
-      "missing_ip": 4771.7,
+      "missing_pa": 3355,
+      "missing_ip": 367.3,
       "hitter_categories": {
         "foreign_1st": {
-          "pa": 3188,
-          "pct_of_total": 5.1,
-          "n": 17
+          "pa": 55,
+          "pct_of_total": 0.1,
+          "n": 6
         },
         "rookie": {
-          "pa": 3099,
-          "pct_of_total": 4.9,
-          "n": 69
+          "pa": 555,
+          "pct_of_total": 0.9,
+          "n": 54
         },
         "below_threshold": {
-          "pa": 3988,
-          "pct_of_total": 6.3,
-          "n": 116
+          "pa": 675,
+          "pct_of_total": 1.1,
+          "n": 70
         },
         "other": {
-          "pa": 5622,
-          "pct_of_total": 8.9,
-          "n": 92
+          "pa": 2070,
+          "pct_of_total": 3.3,
+          "n": 64
         }
       },
       "pitcher_categories": {
         "foreign_1st": {
-          "ip": 847.7,
-          "pct_of_total": 5.5,
-          "n": 15
+          "ip": 5.0,
+          "pct_of_total": 0.0,
+          "n": 1
         },
         "rookie": {
-          "ip": 1196.7,
-          "pct_of_total": 7.8,
-          "n": 59
+          "ip": 107.0,
+          "pct_of_total": 0.7,
+          "n": 28
         },
         "below_threshold": {
-          "ip": 1064.3,
-          "pct_of_total": 6.9,
-          "n": 50
+          "ip": 71.7,
+          "pct_of_total": 0.5,
+          "n": 14
         },
         "other": {
-          "ip": 1663.0,
-          "pct_of_total": 10.8,
-          "n": 84
+          "ip": 183.7,
+          "pct_of_total": 1.2,
+          "n": 39
         }
       }
     }
@@ -428,46 +428,46 @@
   "summary": {
     "hitter_missing_pa_breakdown": {
       "foreign_1st": {
-        "pa": 19280,
-        "pct_of_total": 3.8,
-        "pct_of_missing": 15.9
+        "pa": 523,
+        "pct_of_total": 0.1,
+        "pct_of_missing": 2.3
       },
       "rookie": {
-        "pa": 27036,
-        "pct_of_total": 5.4,
-        "pct_of_missing": 22.2
+        "pa": 3731,
+        "pct_of_total": 0.7,
+        "pct_of_missing": 16.6
       },
       "below_threshold": {
-        "pa": 34191,
-        "pct_of_total": 6.8,
-        "pct_of_missing": 28.1
+        "pa": 4179,
+        "pct_of_total": 0.8,
+        "pct_of_missing": 18.6
       },
       "other": {
-        "pa": 41042,
-        "pct_of_total": 8.1,
-        "pct_of_missing": 33.8
+        "pa": 14079,
+        "pct_of_total": 2.8,
+        "pct_of_missing": 62.5
       }
     },
     "pitcher_missing_ip_breakdown": {
       "foreign_1st": {
-        "ip": 5841.9,
-        "pct_of_total": 4.9,
-        "pct_of_missing": 15.4
+        "ip": 87.3,
+        "pct_of_total": 0.1,
+        "pct_of_missing": 3.1
       },
       "rookie": {
-        "ip": 10097.2,
-        "pct_of_total": 8.4,
-        "pct_of_missing": 26.6
+        "ip": 625.3,
+        "pct_of_total": 0.5,
+        "pct_of_missing": 22.1
       },
       "below_threshold": {
-        "ip": 8276.7,
-        "pct_of_total": 6.9,
-        "pct_of_missing": 21.8
+        "ip": 398.4,
+        "pct_of_total": 0.3,
+        "pct_of_missing": 14.1
       },
       "other": {
-        "ip": 13701.9,
-        "pct_of_total": 11.4,
-        "pct_of_missing": 36.1
+        "ip": 1721.3,
+        "pct_of_total": 1.4,
+        "pct_of_missing": 60.8
       }
     }
   }
