@@ -20,6 +20,7 @@ on:
           - run_jpn_model
           - team_compare
           - statistical_validation
+          - diagnose_big_misses
 
 permissions:
   contents: write
@@ -98,6 +99,10 @@ jobs:
       - name: Run statistical validation (LOO-CV + significance tests)
         if: inputs.step == 'statistical_validation'
         run: python src/statistical_validation.py
+
+      - name: Diagnose big-miss team-years (Step 12)
+        if: inputs.step == 'diagnose_big_misses'
+        run: python src/diagnose_big_misses.py
 
       - name: Commit results to repo
         run: |
