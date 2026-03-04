@@ -420,7 +420,7 @@ def main(draws=1000, warmup=500):
 
     # ── Standardize ───────────────────────────────────────────────────────────
     feat_cols_h = ["K_pct", "BB_pct", "BABIP", "age_from_peak"]
-    feat_cols_p = ["K_pct", "BB_pct", "age_from_peak"]
+    feat_cols_p = ["K_pct", "BB_pct", "K_per_9", "BB_per_9", "age_from_peak"]
 
     train_z_h, test_z_h, h_means, h_stds = standardize_features(train_h, test_h, feat_cols_h)
     train_z_p, test_z_p, p_means, p_stds = standardize_features(train_p, test_p, feat_cols_p)
@@ -468,21 +468,28 @@ def main(draws=1000, warmup=500):
         "marcel_era":      train_p["marcel_era"].tolist(),
         "z_K":             train_z_p[:, 0].tolist(),
         "z_BB":            train_z_p[:, 1].tolist(),
-        "z_age":           train_z_p[:, 2].tolist(),
+        "z_K9":            train_z_p[:, 2].tolist(),
+        "z_BB9":           train_z_p[:, 3].tolist(),
+        "z_age":           train_z_p[:, 4].tolist(),
         "actual_era":      train_p["actual_era"].tolist(),
         "N_pred":          len(test_p),
         "marcel_era_pred": test_p["marcel_era"].tolist(),
         "z_K_pred":        test_z_p[:, 0].tolist(),
         "z_BB_pred":       test_z_p[:, 1].tolist(),
-        "z_age_pred":      test_z_p[:, 2].tolist(),
+        "z_K9_pred":       test_z_p[:, 2].tolist(),
+        "z_BB9_pred":      test_z_p[:, 3].tolist(),
+        "z_age_pred":      test_z_p[:, 4].tolist(),
     }
     fit_p = run_stan_model(ROOT / "models" / "pitcher_jpn.stan", stan_data_p, draws, warmup)
 
     stan_pred_p = fit_p.stan_variable("stan_pred").mean(axis=0)
-    delta_K_p   = float(fit_p.stan_variable("delta_K").mean())
-    delta_BB_p  = float(fit_p.stan_variable("delta_BB").mean())
-    delta_age_p = float(fit_p.stan_variable("delta_age").mean())
+    delta_K_p    = float(fit_p.stan_variable("delta_K").mean())
+    delta_BB_p   = float(fit_p.stan_variable("delta_BB").mean())
+    delta_K9_p   = float(fit_p.stan_variable("delta_K9").mean())
+    delta_BB9_p  = float(fit_p.stan_variable("delta_BB9").mean())
+    delta_age_p  = float(fit_p.stan_variable("delta_age").mean())
     print(f"  delta_K={delta_K_p:+.4f}  delta_BB={delta_BB_p:+.4f}  "
+          f"delta_K9={delta_K9_p:+.4f}  delta_BB9={delta_BB9_p:+.4f}  "
           f"delta_age={delta_age_p:+.4f}")
 
     test_p = test_p.copy()
@@ -521,6 +528,8 @@ def main(draws=1000, warmup=500):
             "delta_mae":  round(mae_stan_p - mae_marcel_p, 4),
             "delta_K":    round(delta_K_p, 4),
             "delta_BB":   round(delta_BB_p, 4),
+            "delta_K9":   round(delta_K9_p, 4),
+            "delta_BB9":  round(delta_BB9_p, 4),
             "delta_age":  round(delta_age_p, 4),
             "n_test":     len(test_p),
             "feature_means": p_means,
