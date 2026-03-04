@@ -10,8 +10,8 @@ Five analyses:
   5. FIP vs ERA pitcher model comparison
 
 Ridge alphas (= sigma^2 / tau^2, posterior mean approximation):
-  Japanese hitter:  0.053^2 / 0.05^2 = 1.12  (4 features: K%, BB%, BABIP, age)
-  Japanese pitcher: 1.10^2  / 0.5^2  = 4.84  (3 features: K%, BB%, age)
+  Japanese hitter:  0.053^2 / 0.05^2 = 1.12  (6 features: K%, BB%, BABIP, age, pa_stability, prev_woba_dev_sq)
+  Japanese pitcher: 1.10^2  / 0.5^2  = 4.84  (5 features: K%, BB%, age, ip_stability, prev_babip_p)
   Foreign hitter:   0.05^2  / 0.02^2 = 6.25  (3 features: wOBA, K%, BB%)
   Foreign pitcher:  1.0^2   / 0.5^2  = 4.0   (4 features: ERA, FIP, K%, BB%)
 
@@ -379,9 +379,9 @@ def run_jpn_loocv(decay_lambda=1.0):
     pitchers = compute_fip_column(pitchers)  # Add FIP column
     bday_df = load_birthday_df()
 
-    feat_h = ["K_pct", "BB_pct", "BABIP", "age_from_peak"]
-    feat_p = ["K_pct", "BB_pct", "age_from_peak"]
-    feat_p_k9 = ["K_pct", "BB_pct", "K_per_9", "BB_per_9", "age_from_peak"]
+    feat_h = ["K_pct", "BB_pct", "BABIP", "age_from_peak", "pa_stability", "prev_woba_dev_sq"]
+    feat_p = ["K_pct", "BB_pct", "age_from_peak", "ip_stability", "prev_babip_p"]
+    feat_p_k9 = ["K_pct", "BB_pct", "K_per_9", "BB_per_9", "age_from_peak", "ip_stability", "prev_babip_p"]
 
     all_h, all_p, all_p_fip = [], [], []
     all_p_k9, all_p_fip_k9 = [], []

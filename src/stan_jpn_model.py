@@ -203,11 +203,16 @@ def add_actual_fip(pitchers_df: pd.DataFrame, target_year: int,
 
 
 def compute_marcel_woba(saber_df: pd.DataFrame, target_year: int) -> pd.DataFrame:
-    """Marcel wOBA projection for all players with sufficient history."""
+    """Marcel wOBA projection for all players with sufficient history.
+
+    Also computes pa_stability = min(PA_3yr) / max(PA_3yr) as an injury-risk
+    proxy.  Players with only 1 year of data get stability = 0.5 (conservative).
+    """
     lg_avg = league_avg_woba(saber_df, target_year)
     rows = []
     for player, grp in saber_df.groupby("player"):
         w_total = woba_sum = 0.0
+        pa_vals: list[float] = []
         for lag, w in MARCEL_WEIGHTS.items():
             yr = target_year - lag
             row = grp[grp["year"] == yr]
@@ -218,6 +223,7 @@ def compute_marcel_woba(saber_df: pd.DataFrame, target_year: int) -> pd.DataFram
             if pa >= MIN_PA and not np.isnan(woba):
                 w_total  += w * pa
                 woba_sum += w * pa * woba
+                pa_vals.append(pa)
         if w_total == 0:
             continue
         # Most-recent year for team assignment
@@ -227,17 +233,24 @@ def compute_marcel_woba(saber_df: pd.DataFrame, target_year: int) -> pd.DataFram
         team = recent.iloc[0]["team"]
         woba_raw  = woba_sum / w_total
         woba_proj = (woba_raw * w_total + lg_avg * REGRESS_PA_HIT) / (w_total + REGRESS_PA_HIT)
+        pa_stability = min(pa_vals) / max(pa_vals) if len(pa_vals) >= 2 else 0.5
         rows.append({"player": player, "team": team, "year": target_year,
-                     "marcel_woba": round(woba_proj, 5), "lg_avg_woba": round(lg_avg, 5)})
+                     "marcel_woba": round(woba_proj, 5), "lg_avg_woba": round(lg_avg, 5),
+                     "pa_stability": round(pa_stability, 4)})
     return pd.DataFrame(rows)
 
 
 def compute_marcel_era(pitchers_df: pd.DataFrame, target_year: int) -> pd.DataFrame:
-    """Marcel ERA projection for all pitchers with sufficient history."""
+    """Marcel ERA projection for all pitchers with sufficient history.
+
+    Also computes ip_stability = min(IP_3yr) / max(IP_3yr) as an injury-risk
+    proxy.  Pitchers with only 1 year of data get stability = 0.5 (conservative).
+    """
     lg_avg = league_avg_era(pitchers_df, target_year)
     rows = []
     for player, grp in pitchers_df.groupby("player"):
         w_total = era_sum = 0.0
+        ip_vals: list[float] = []
         for lag, w in MARCEL_WEIGHTS.items():
             yr = target_year - lag
             row = grp[grp["year"] == yr]
@@ -249,6 +262,7 @@ def compute_marcel_era(pitchers_df: pd.DataFrame, target_year: int) -> pd.DataFr
                 era = float(era)
                 w_total += w * ip
                 era_sum += w * ip * era
+                ip_vals.append(ip)
         if w_total == 0:
             continue
         recent = grp[grp["year"] == target_year - 1]
@@ -257,34 +271,47 @@ def compute_marcel_era(pitchers_df: pd.DataFrame, target_year: int) -> pd.DataFr
         team = recent.iloc[0]["team"]
         era_raw  = era_sum / w_total
         era_proj = (era_raw * w_total + lg_avg * REGRESS_IP_PITCH) / (w_total + REGRESS_IP_PITCH)
+        ip_stability = min(ip_vals) / max(ip_vals) if len(ip_vals) >= 2 else 0.5
         rows.append({"player": player, "team": team, "year": target_year,
-                     "marcel_era": round(era_proj, 4), "lg_avg_era": round(lg_avg, 4)})
+                     "marcel_era": round(era_proj, 4), "lg_avg_era": round(lg_avg, 4),
+                     "ip_stability": round(ip_stability, 4)})
     return pd.DataFrame(rows)
 
 
 def add_kpct_bbpct_hitter(saber_df: pd.DataFrame, target_year: int,
                            marcel_df: pd.DataFrame) -> pd.DataFrame:
-    """Add K%/BB%/BABIP features from the year before the target year.
+    """Add K%/BB%/BABIP/prev_woba_dev_sq features from the year before target.
 
     BABIP = (H - HR) / (AB - SO - HR + SF) captures luck in year t-1.
-    High BABIP in t-1 → Marcel overestimates year t → expected delta_BABIP < 0.
+    prev_woba_dev_sq = (wOBA_t-1 - lg_avg)^2 captures extreme-performance
+    regression tendency — players far from league average in either direction
+    tend to regress.
     """
-    cols = ["player", "PA", "SO", "BB", "AB", "H", "HR", "SF"]
+    cols = ["player", "PA", "SO", "BB", "AB", "H", "HR", "SF", "wOBA"]
     prev = saber_df[saber_df["year"] == target_year - 1][cols].copy()
     prev = prev[prev["PA"] >= MIN_PA]
     prev["K_pct"]  = prev["SO"] / prev["PA"]
     prev["BB_pct"] = prev["BB"] / prev["PA"]
     denom = (prev["AB"] - prev["SO"] - prev["HR"] + prev["SF"]).clip(lower=1)
     prev["BABIP"]  = (prev["H"] - prev["HR"]) / denom
-    merged = marcel_df.merge(prev[["player", "K_pct", "BB_pct", "BABIP"]], on="player", how="inner")
+    lg_avg = league_avg_woba(saber_df, target_year)
+    prev["prev_woba_dev_sq"] = (prev["wOBA"] - lg_avg) ** 2
+    merged = marcel_df.merge(
+        prev[["player", "K_pct", "BB_pct", "BABIP", "prev_woba_dev_sq"]],
+        on="player", how="inner",
+    )
     return merged
 
 
 def add_kpct_bbpct_pitcher(pitchers_df: pd.DataFrame, target_year: int,
                             marcel_df: pd.DataFrame) -> pd.DataFrame:
-    """Add K%/BB%/K_per_9/BB_per_9 features from the year before the target year."""
+    """Add K%/BB%/K_per_9/BB_per_9/prev_babip_p features from prior year.
+
+    prev_babip_p = (HA - HRA) / (BF - SO - HRA) captures pitcher BABIP luck
+    in year t-1.  Pitchers with low BABIP in t-1 tend to see ERA regress upward.
+    """
     prev = pitchers_df[pitchers_df["year"] == target_year - 1][
-        ["player", "IP", "SO", "BB", "BF"]
+        ["player", "IP", "SO", "BB", "BF", "HA", "HRA"]
     ].copy()
     prev["IP_dec"] = prev["IP"].apply(ip_to_decimal)
     prev = prev[prev["IP_dec"] >= MIN_IP]
@@ -293,8 +320,10 @@ def add_kpct_bbpct_pitcher(pitchers_df: pd.DataFrame, target_year: int,
     prev["BB_pct"]   = prev["BB"] / prev["BF"]
     prev["K_per_9"]  = prev["SO"] * 9.0 / prev["IP_dec"]
     prev["BB_per_9"] = prev["BB"] * 9.0 / prev["IP_dec"]
+    babip_denom = (prev["BF"] - prev["SO"] - prev["HRA"]).clip(lower=1)
+    prev["prev_babip_p"] = (prev["HA"] - prev["HRA"]) / babip_denom
     merged = marcel_df.merge(
-        prev[["player", "K_pct", "BB_pct", "K_per_9", "BB_per_9"]],
+        prev[["player", "K_pct", "BB_pct", "K_per_9", "BB_per_9", "prev_babip_p"]],
         on="player", how="inner",
     )
     return merged

@@ -57,6 +57,9 @@ LEAGUES: dict[str, list[str]] = {
 
 CS_SPOTS = 3  # top-3 qualify for Climax Series
 
+# ── Roster turnover uncertainty ────────────────────────────────────────────────
+TURNOVER_K = 1.0  # sigma scaling coefficient for roster turnover
+
 # ── Data source: npb-prediction (public repo) ──────────────────────────────────
 NPBP_BASE = (
     "https://raw.githubusercontent.com/yasumorishima/npb-prediction/main/data/projections"
@@ -78,6 +81,66 @@ def load_historical() -> tuple[pd.DataFrame, pd.DataFrame]:
         encoding="utf-8-sig",
     )
     return hist, actual
+
+
+def compute_turnover(
+    hitters_2026: pd.DataFrame,
+    pitchers_2026: pd.DataFrame,
+) -> dict[str, float]:
+    """Compute roster turnover rate per team (2025 → 2026).
+
+    Compares 2025 actual rosters (from npb-prediction raw data) with
+    2026 projected rosters.  Turnover = departed_PA / total_2025_PA
+    for hitters (analogous for pitchers, averaged).
+
+    Returns dict: team -> turnover_pct (0.0 – 1.0).
+    """
+    saber_2025 = pd.read_csv(
+        "https://raw.githubusercontent.com/yasumorishima/npb-prediction/main"
+        "/data/raw/npb_sabermetrics_2015_2025.csv",
+        encoding="utf-8-sig",
+    )
+    saber_2025 = saber_2025[saber_2025["year"] == 2025]
+
+    pitchers_2025 = pd.read_csv(
+        "https://raw.githubusercontent.com/yasumorishima/npb-prediction/main"
+        "/data/raw/npb_pitchers_2015_2025.csv",
+        encoding="utf-8-sig",
+    )
+    pitchers_2025 = pitchers_2025[pitchers_2025["year"] == 2025]
+
+    proj_h_names = set(hitters_2026["player"].values)
+    proj_p_names = set(pitchers_2026["player"].values)
+
+    turnover: dict[str, float] = {}
+    all_teams = set(hitters_2026["team"].unique()) | set(saber_2025["team"].unique())
+
+    for team in all_teams:
+        # Hitter turnover
+        team_h_2025 = saber_2025[saber_2025["team"] == team]
+        total_pa = float(team_h_2025["PA"].sum())
+        if total_pa > 0:
+            departed_pa = float(
+                team_h_2025[~team_h_2025["player"].isin(proj_h_names)]["PA"].sum()
+            )
+            h_turnover = departed_pa / total_pa
+        else:
+            h_turnover = 0.0
+
+        # Pitcher turnover
+        team_p_2025 = pitchers_2025[pitchers_2025["team"] == team]
+        total_ip = float(team_p_2025["IP"].sum()) if len(team_p_2025) > 0 else 0.0
+        if total_ip > 0:
+            departed_ip = float(
+                team_p_2025[~team_p_2025["player"].isin(proj_p_names)]["IP"].sum()
+            )
+            p_turnover = departed_ip / total_ip
+        else:
+            p_turnover = 0.0
+
+        turnover[team] = (h_turnover + p_turnover) / 2.0
+
+    return turnover
 
 
 def normalize_hitter_pa(hitters: pd.DataFrame) -> pd.DataFrame:
@@ -106,8 +169,15 @@ def simulate(
     pitchers: pd.DataFrame,
     n_sim: int = N_SIM,
     seed: int = 42,
+    turnover: dict[str, float] | None = None,
 ) -> dict[str, np.ndarray]:
-    """Run Monte Carlo simulation. Returns dict: team -> (n_sim,) win totals."""
+    """Run Monte Carlo simulation. Returns dict: team -> (n_sim,) win totals.
+
+    Args:
+        turnover: Optional dict of team -> turnover_pct (0–1).  When provided,
+            each team's RS/RA noise sigma is scaled by (1 + TURNOVER_K * pct)
+            to widen the confidence interval for teams with high roster churn.
+    """
     rng = np.random.default_rng(seed)
 
     # Hitters: sample OPS draws (n_players x n_sim)
@@ -148,6 +218,17 @@ def simulate(
     for i, team in enumerate(valid_teams):
         rs = rs_matrix[i] * scale_rs
         ra = ra_matrix[i] * scale_ra
+
+        # Turnover uncertainty: add extra noise proportional to turnover rate
+        if turnover is not None:
+            t_pct = turnover.get(team, 0.0)
+            extra_sigma = TURNOVER_K * t_pct
+            if extra_sigma > 0:
+                rs = rs + rng.normal(0, extra_sigma * NPB_HIST_RS, n_sim)
+                ra = ra + rng.normal(0, extra_sigma * NPB_HIST_RS, n_sim)
+                rs = np.clip(rs, 1.0, None)
+                ra = np.clip(ra, 1.0, None)
+
         rs_exp = np.power(np.clip(rs, 1.0, None), NPB_PYTH_EXP)
         ra_exp = np.power(np.clip(ra, 1.0, None), NPB_PYTH_EXP)
         wpct   = rs_exp / (rs_exp + ra_exp)
@@ -283,11 +364,17 @@ def main(n_sim: int = N_SIM) -> None:
     print(f"  Hitters : {len(hitters):3d} players / {hitters['team'].nunique()} teams")
     print(f"  Pitchers: {len(pitchers):3d} players / {pitchers['team'].nunique()} teams")
 
+    # Compute roster turnover uncertainty (2025 → 2026)
+    print("Computing roster turnover (2025 → 2026)...")
+    turnover = compute_turnover(hitters, pitchers)
+    for team in sorted(turnover, key=turnover.get, reverse=True):
+        print(f"  {team:14s}  turnover={turnover[team]:.1%}")
+
     hitters  = normalize_hitter_pa(hitters)
     pitchers = normalize_pitcher_ip(pitchers)
 
     print(f"Running {n_sim:,} simulations...")
-    wins_sim = simulate(hitters, pitchers, n_sim)
+    wins_sim = simulate(hitters, pitchers, n_sim, turnover=turnover)
 
     results = compute_probabilities(wins_sim)
 

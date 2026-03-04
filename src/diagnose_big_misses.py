@@ -49,8 +49,8 @@ def run_loocv_with_detail():
     pitchers = compute_fip_column(pitchers)
     bday_df = load_birthday_df()
 
-    feat_h = ["K_pct", "BB_pct", "BABIP", "age_from_peak"]
-    feat_p = ["K_pct", "BB_pct", "age_from_peak"]
+    feat_h = ["K_pct", "BB_pct", "BABIP", "age_from_peak", "pa_stability", "prev_woba_dev_sq"]
+    feat_p = ["K_pct", "BB_pct", "age_from_peak", "ip_stability", "prev_babip_p"]
 
     all_h, all_p = [], []
 
