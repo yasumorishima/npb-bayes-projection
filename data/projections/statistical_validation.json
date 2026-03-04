@@ -1,5 +1,5 @@
 {
-  "step": "14_coverage_improvement",
+  "step": "15_team_aggregation_improvement",
   "japanese_loocv": {
     "years": [
       2018,
@@ -537,6 +537,458 @@
           "bootstrap_p_stan_better": 0.9725,
           "cohens_d": 0.0415,
           "stan_win_rate": "1129/2164 (52.2%)"
+        }
+      }
+    }
+  },
+  "team_min_pa_sweep": {
+    "mpt_0": {
+      "impute": {
+        "mae_marcel": 6.725,
+        "mae_stan": 6.923,
+        "delta_mae": 0.198,
+        "paired_t_p": 0.093569,
+        "bootstrap_p_stan_better": 0.0442,
+        "n_team_years": 96,
+        "yearly": {
+          "2018": {
+            "marcel": 6.262,
+            "stan": 6.82,
+            "delta": 0.559,
+            "n": 12,
+            "avg_PA_cov": 97.2,
+            "avg_IP_cov": 97.8
+          },
+          "2019": {
+            "marcel": 4.36,
+            "stan": 4.623,
+            "delta": 0.263,
+            "n": 12,
+            "avg_PA_cov": 98.0,
+            "avg_IP_cov": 97.9
+          },
+          "2020": {
+            "marcel": 6.299,
+            "stan": 6.247,
+            "delta": -0.052,
+            "n": 12,
+            "avg_PA_cov": 98.2,
+            "avg_IP_cov": 98.8
+          },
+          "2021": {
+            "marcel": 10.602,
+            "stan": 11.246,
+            "delta": 0.644,
+            "n": 12,
+            "avg_PA_cov": 96.9,
+            "avg_IP_cov": 98.5
+          },
+          "2022": {
+            "marcel": 5.829,
+            "stan": 5.722,
+            "delta": -0.107,
+            "n": 12,
+            "avg_PA_cov": 98.3,
+            "avg_IP_cov": 99.1
+          },
+          "2023": {
+            "marcel": 6.034,
+            "stan": 5.889,
+            "delta": -0.146,
+            "n": 12,
+            "avg_PA_cov": 97.6,
+            "avg_IP_cov": 97.8
+          },
+          "2024": {
+            "marcel": 7.046,
+            "stan": 6.895,
+            "delta": -0.151,
+            "n": 12,
+            "avg_PA_cov": 97.4,
+            "avg_IP_cov": 98.5
+          },
+          "2025": {
+            "marcel": 7.37,
+            "stan": 7.943,
+            "delta": 0.573,
+            "n": 12,
+            "avg_PA_cov": 97.1,
+            "avg_IP_cov": 97.6
+          }
+        }
+      },
+      "no_impute": {
+        "mae_marcel": 7.041,
+        "mae_stan": 7.249,
+        "delta_mae": 0.208,
+        "paired_t_p": 0.085195,
+        "bootstrap_p_stan_better": 0.0389,
+        "n_team_years": 96,
+        "yearly": {
+          "2018": {
+            "marcel": 6.513,
+            "stan": 6.891,
+            "delta": 0.379,
+            "n": 12,
+            "avg_PA_cov": 97.2,
+            "avg_IP_cov": 97.8
+          },
+          "2019": {
+            "marcel": 5.173,
+            "stan": 5.416,
+            "delta": 0.243,
+            "n": 12,
+            "avg_PA_cov": 98.0,
+            "avg_IP_cov": 97.9
+          },
+          "2020": {
+            "marcel": 6.552,
+            "stan": 6.682,
+            "delta": 0.13,
+            "n": 12,
+            "avg_PA_cov": 98.2,
+            "avg_IP_cov": 98.8
+          },
+          "2021": {
+            "marcel": 10.783,
+            "stan": 11.413,
+            "delta": 0.63,
+            "n": 12,
+            "avg_PA_cov": 96.9,
+            "avg_IP_cov": 98.5
+          },
+          "2022": {
+            "marcel": 6.408,
+            "stan": 6.385,
+            "delta": -0.023,
+            "n": 12,
+            "avg_PA_cov": 98.3,
+            "avg_IP_cov": 99.1
+          },
+          "2023": {
+            "marcel": 6.502,
+            "stan": 6.368,
+            "delta": -0.134,
+            "n": 12,
+            "avg_PA_cov": 97.6,
+            "avg_IP_cov": 97.8
+          },
+          "2024": {
+            "marcel": 6.968,
+            "stan": 6.817,
+            "delta": -0.151,
+            "n": 12,
+            "avg_PA_cov": 97.4,
+            "avg_IP_cov": 98.5
+          },
+          "2025": {
+            "marcel": 7.43,
+            "stan": 8.018,
+            "delta": 0.588,
+            "n": 12,
+            "avg_PA_cov": 97.1,
+            "avg_IP_cov": 97.6
+          }
+        }
+      }
+    },
+    "mpt_50": {
+      "impute": {
+        "mae_marcel": 6.682,
+        "mae_stan": 6.903,
+        "delta_mae": 0.221,
+        "paired_t_p": 0.061392,
+        "bootstrap_p_stan_better": 0.0275,
+        "n_team_years": 96,
+        "yearly": {
+          "2018": {
+            "marcel": 6.213,
+            "stan": 6.77,
+            "delta": 0.557,
+            "n": 12,
+            "avg_PA_cov": 94.8,
+            "avg_IP_cov": 97.8
+          },
+          "2019": {
+            "marcel": 4.272,
+            "stan": 4.602,
+            "delta": 0.33,
+            "n": 12,
+            "avg_PA_cov": 95.6,
+            "avg_IP_cov": 97.9
+          },
+          "2020": {
+            "marcel": 6.174,
+            "stan": 6.187,
+            "delta": 0.013,
+            "n": 12,
+            "avg_PA_cov": 95.0,
+            "avg_IP_cov": 98.8
+          },
+          "2021": {
+            "marcel": 10.595,
+            "stan": 11.241,
+            "delta": 0.646,
+            "n": 12,
+            "avg_PA_cov": 94.3,
+            "avg_IP_cov": 98.5
+          },
+          "2022": {
+            "marcel": 5.714,
+            "stan": 5.631,
+            "delta": -0.082,
+            "n": 12,
+            "avg_PA_cov": 94.6,
+            "avg_IP_cov": 99.1
+          },
+          "2023": {
+            "marcel": 6.038,
+            "stan": 5.917,
+            "delta": -0.122,
+            "n": 12,
+            "avg_PA_cov": 94.4,
+            "avg_IP_cov": 97.8
+          },
+          "2024": {
+            "marcel": 7.041,
+            "stan": 6.885,
+            "delta": -0.156,
+            "n": 12,
+            "avg_PA_cov": 94.7,
+            "avg_IP_cov": 98.5
+          },
+          "2025": {
+            "marcel": 7.409,
+            "stan": 7.991,
+            "delta": 0.582,
+            "n": 12,
+            "avg_PA_cov": 94.8,
+            "avg_IP_cov": 97.6
+          }
+        }
+      },
+      "no_impute": {
+        "mae_marcel": 6.893,
+        "mae_stan": 7.141,
+        "delta_mae": 0.248,
+        "paired_t_p": 0.03632,
+        "bootstrap_p_stan_better": 0.0163,
+        "n_team_years": 96,
+        "yearly": {
+          "2018": {
+            "marcel": 6.412,
+            "stan": 6.784,
+            "delta": 0.371,
+            "n": 12,
+            "avg_PA_cov": 94.8,
+            "avg_IP_cov": 97.8
+          },
+          "2019": {
+            "marcel": 4.746,
+            "stan": 5.105,
+            "delta": 0.359,
+            "n": 12,
+            "avg_PA_cov": 95.6,
+            "avg_IP_cov": 97.9
+          },
+          "2020": {
+            "marcel": 6.768,
+            "stan": 6.872,
+            "delta": 0.105,
+            "n": 12,
+            "avg_PA_cov": 95.0,
+            "avg_IP_cov": 98.8
+          },
+          "2021": {
+            "marcel": 10.806,
+            "stan": 11.457,
+            "delta": 0.651,
+            "n": 12,
+            "avg_PA_cov": 94.3,
+            "avg_IP_cov": 98.5
+          },
+          "2022": {
+            "marcel": 6.082,
+            "stan": 6.246,
+            "delta": 0.164,
+            "n": 12,
+            "avg_PA_cov": 94.6,
+            "avg_IP_cov": 99.1
+          },
+          "2023": {
+            "marcel": 6.582,
+            "stan": 6.452,
+            "delta": -0.13,
+            "n": 12,
+            "avg_PA_cov": 94.4,
+            "avg_IP_cov": 97.8
+          },
+          "2024": {
+            "marcel": 6.794,
+            "stan": 6.648,
+            "delta": -0.146,
+            "n": 12,
+            "avg_PA_cov": 94.7,
+            "avg_IP_cov": 98.5
+          },
+          "2025": {
+            "marcel": 6.956,
+            "stan": 7.568,
+            "delta": 0.612,
+            "n": 12,
+            "avg_PA_cov": 94.8,
+            "avg_IP_cov": 97.6
+          }
+        }
+      }
+    },
+    "mpt_100": {
+      "impute": {
+        "mae_marcel": 6.644,
+        "mae_stan": 6.868,
+        "delta_mae": 0.224,
+        "paired_t_p": 0.056514,
+        "bootstrap_p_stan_better": 0.0252,
+        "n_team_years": 96,
+        "yearly": {
+          "2018": {
+            "marcel": 6.298,
+            "stan": 6.84,
+            "delta": 0.543,
+            "n": 12,
+            "avg_PA_cov": 90.0,
+            "avg_IP_cov": 97.8
+          },
+          "2019": {
+            "marcel": 4.262,
+            "stan": 4.622,
+            "delta": 0.36,
+            "n": 12,
+            "avg_PA_cov": 90.4,
+            "avg_IP_cov": 97.9
+          },
+          "2020": {
+            "marcel": 5.776,
+            "stan": 5.862,
+            "delta": 0.085,
+            "n": 12,
+            "avg_PA_cov": 87.2,
+            "avg_IP_cov": 98.8
+          },
+          "2021": {
+            "marcel": 10.556,
+            "stan": 11.239,
+            "delta": 0.684,
+            "n": 12,
+            "avg_PA_cov": 87.3,
+            "avg_IP_cov": 98.5
+          },
+          "2022": {
+            "marcel": 5.746,
+            "stan": 5.662,
+            "delta": -0.084,
+            "n": 12,
+            "avg_PA_cov": 87.5,
+            "avg_IP_cov": 99.1
+          },
+          "2023": {
+            "marcel": 6.007,
+            "stan": 5.857,
+            "delta": -0.15,
+            "n": 12,
+            "avg_PA_cov": 88.5,
+            "avg_IP_cov": 97.8
+          },
+          "2024": {
+            "marcel": 7.05,
+            "stan": 6.846,
+            "delta": -0.204,
+            "n": 12,
+            "avg_PA_cov": 88.1,
+            "avg_IP_cov": 98.5
+          },
+          "2025": {
+            "marcel": 7.459,
+            "stan": 8.019,
+            "delta": 0.56,
+            "n": 12,
+            "avg_PA_cov": 89.0,
+            "avg_IP_cov": 97.6
+          }
+        }
+      },
+      "no_impute": {
+        "mae_marcel": 6.868,
+        "mae_stan": 7.154,
+        "delta_mae": 0.286,
+        "paired_t_p": 0.022238,
+        "bootstrap_p_stan_better": 0.009,
+        "n_team_years": 96,
+        "yearly": {
+          "2018": {
+            "marcel": 6.079,
+            "stan": 6.446,
+            "delta": 0.366,
+            "n": 12,
+            "avg_PA_cov": 90.0,
+            "avg_IP_cov": 97.8
+          },
+          "2019": {
+            "marcel": 4.289,
+            "stan": 4.714,
+            "delta": 0.425,
+            "n": 12,
+            "avg_PA_cov": 90.4,
+            "avg_IP_cov": 97.9
+          },
+          "2020": {
+            "marcel": 7.001,
+            "stan": 7.091,
+            "delta": 0.09,
+            "n": 12,
+            "avg_PA_cov": 87.2,
+            "avg_IP_cov": 98.8
+          },
+          "2021": {
+            "marcel": 11.037,
+            "stan": 11.761,
+            "delta": 0.725,
+            "n": 12,
+            "avg_PA_cov": 87.3,
+            "avg_IP_cov": 98.5
+          },
+          "2022": {
+            "marcel": 6.195,
+            "stan": 6.478,
+            "delta": 0.283,
+            "n": 12,
+            "avg_PA_cov": 87.5,
+            "avg_IP_cov": 99.1
+          },
+          "2023": {
+            "marcel": 6.709,
+            "stan": 6.588,
+            "delta": -0.121,
+            "n": 12,
+            "avg_PA_cov": 88.5,
+            "avg_IP_cov": 97.8
+          },
+          "2024": {
+            "marcel": 6.399,
+            "stan": 6.274,
+            "delta": -0.126,
+            "n": 12,
+            "avg_PA_cov": 88.1,
+            "avg_IP_cov": 98.5
+          },
+          "2025": {
+            "marcel": 7.239,
+            "stan": 7.881,
+            "delta": 0.642,
+            "n": 12,
+            "avg_PA_cov": 89.0,
+            "avg_IP_cov": 97.6
+          }
         }
       }
     }
