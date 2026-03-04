@@ -21,6 +21,7 @@ on:
           - team_compare
           - statistical_validation
           - diagnose_big_misses
+          - coverage_gap
 
 permissions:
   contents: write
@@ -103,6 +104,10 @@ jobs:
       - name: Diagnose big-miss team-years (Step 12)
         if: inputs.step == 'diagnose_big_misses'
         run: python src/diagnose_big_misses.py
+
+      - name: Analyze coverage gap by player category
+        if: inputs.step == 'coverage_gap'
+        run: python src/analyze_coverage_gap.py
 
       - name: Commit results to repo
         run: |
