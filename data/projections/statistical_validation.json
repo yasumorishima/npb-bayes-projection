@@ -11,7 +11,7 @@
       2024,
       2025
     ],
-    "n_hitters": 2159,
+    "n_hitters": 2208,
     "n_pitchers": 2164,
     "features_hitter": [
       "K_pct",
@@ -30,16 +30,16 @@
     ],
     "player_level_all": {
       "hitter_woba": {
-        "n": 2159,
-        "mae_marcel": 0.04979,
-        "mae_stan": 0.04935,
-        "delta_mae": 0.00045,
-        "paired_t_stat": 1.9224,
-        "paired_t_p": 0.054683,
-        "wilcoxon_p": 0.490886,
-        "bootstrap_p_stan_better": 0.974,
-        "cohens_d": 0.0414,
-        "stan_win_rate": "1053/2159 (48.8%)"
+        "n": 2208,
+        "mae_marcel": 0.05023,
+        "mae_stan": 0.0498,
+        "delta_mae": 0.00043,
+        "paired_t_stat": 1.8805,
+        "paired_t_p": 0.060175,
+        "wilcoxon_p": 0.554563,
+        "bootstrap_p_stan_better": 0.9712,
+        "cohens_d": 0.04,
+        "stan_win_rate": "1077/2208 (48.8%)"
       },
       "pitcher_era": {
         "n": 2164,
@@ -55,91 +55,91 @@
       }
     },
     "team_level_all": {
-      "mae_marcel": 6.654,
-      "mae_stan": 6.865,
-      "delta_mae": 0.211,
-      "paired_t_p": 0.07548,
-      "bootstrap_p_stan_better": 0.0345,
+      "mae_marcel": 6.725,
+      "mae_stan": 6.923,
+      "delta_mae": 0.198,
+      "paired_t_p": 0.093569,
+      "bootstrap_p_stan_better": 0.0442,
       "n_team_years": 96,
       "yearly": {
         "2018": {
-          "marcel": 6.319,
-          "stan": 6.87,
-          "delta": 0.551,
+          "marcel": 6.262,
+          "stan": 6.82,
+          "delta": 0.559,
           "n": 12,
-          "avg_PA_cov": 95.3,
+          "avg_PA_cov": 97.2,
           "avg_IP_cov": 97.8
         },
         "2019": {
-          "marcel": 4.03,
-          "stan": 4.349,
-          "delta": 0.318,
+          "marcel": 4.36,
+          "stan": 4.623,
+          "delta": 0.263,
           "n": 12,
-          "avg_PA_cov": 96.2,
+          "avg_PA_cov": 98.0,
           "avg_IP_cov": 97.9
         },
         "2020": {
-          "marcel": 6.225,
-          "stan": 6.21,
-          "delta": -0.015,
+          "marcel": 6.299,
+          "stan": 6.247,
+          "delta": -0.052,
           "n": 12,
-          "avg_PA_cov": 97.3,
+          "avg_PA_cov": 98.2,
           "avg_IP_cov": 98.8
         },
         "2021": {
-          "marcel": 10.601,
-          "stan": 11.252,
-          "delta": 0.651,
+          "marcel": 10.602,
+          "stan": 11.246,
+          "delta": 0.644,
           "n": 12,
-          "avg_PA_cov": 95.9,
+          "avg_PA_cov": 96.9,
           "avg_IP_cov": 98.5
         },
         "2022": {
-          "marcel": 5.58,
-          "stan": 5.487,
-          "delta": -0.093,
+          "marcel": 5.829,
+          "stan": 5.722,
+          "delta": -0.107,
           "n": 12,
-          "avg_PA_cov": 95.9,
+          "avg_PA_cov": 98.3,
           "avg_IP_cov": 99.1
         },
         "2023": {
-          "marcel": 6.044,
-          "stan": 5.912,
-          "delta": -0.132,
+          "marcel": 6.034,
+          "stan": 5.889,
+          "delta": -0.146,
           "n": 12,
-          "avg_PA_cov": 96.5,
+          "avg_PA_cov": 97.6,
           "avg_IP_cov": 97.8
         },
         "2024": {
-          "marcel": 7.056,
-          "stan": 6.902,
-          "delta": -0.153,
+          "marcel": 7.046,
+          "stan": 6.895,
+          "delta": -0.151,
           "n": 12,
-          "avg_PA_cov": 96.1,
+          "avg_PA_cov": 97.4,
           "avg_IP_cov": 98.5
         },
         "2025": {
-          "marcel": 7.375,
-          "stan": 7.934,
-          "delta": 0.559,
+          "marcel": 7.37,
+          "stan": 7.943,
+          "delta": 0.573,
           "n": 12,
-          "avg_PA_cov": 95.0,
+          "avg_PA_cov": 97.1,
           "avg_IP_cov": 97.6
         }
       }
     },
     "player_level_no2021": {
       "hitter_woba": {
-        "n": 1888,
-        "mae_marcel": 0.04979,
-        "mae_stan": 0.04944,
-        "delta_mae": 0.00034,
-        "paired_t_stat": 1.4079,
-        "paired_t_p": 0.159333,
-        "wilcoxon_p": 0.26908,
-        "bootstrap_p_stan_better": 0.9226,
-        "cohens_d": 0.0324,
-        "stan_win_rate": "905/1888 (47.9%)"
+        "n": 1932,
+        "mae_marcel": 0.05022,
+        "mae_stan": 0.04989,
+        "delta_mae": 0.00033,
+        "paired_t_stat": 1.3374,
+        "paired_t_p": 0.181258,
+        "wilcoxon_p": 0.265884,
+        "bootstrap_p_stan_better": 0.9137,
+        "cohens_d": 0.0304,
+        "stan_win_rate": "924/1932 (47.8%)"
       },
       "pitcher_era": {
         "n": 1901,
@@ -155,67 +155,67 @@
       }
     },
     "team_level_no2021": {
-      "mae_marcel": 6.09,
-      "mae_stan": 6.238,
-      "delta_mae": 0.148,
-      "paired_t_p": 0.242882,
-      "bootstrap_p_stan_better": 0.1189,
+      "mae_marcel": 6.172,
+      "mae_stan": 6.306,
+      "delta_mae": 0.134,
+      "paired_t_p": 0.286902,
+      "bootstrap_p_stan_better": 0.145,
       "n_team_years": 84,
       "yearly": {
         "2018": {
-          "marcel": 6.319,
-          "stan": 6.87,
-          "delta": 0.551,
+          "marcel": 6.262,
+          "stan": 6.82,
+          "delta": 0.559,
           "n": 12,
-          "avg_PA_cov": 95.3,
+          "avg_PA_cov": 97.2,
           "avg_IP_cov": 97.8
         },
         "2019": {
-          "marcel": 4.03,
-          "stan": 4.349,
-          "delta": 0.318,
+          "marcel": 4.36,
+          "stan": 4.623,
+          "delta": 0.263,
           "n": 12,
-          "avg_PA_cov": 96.2,
+          "avg_PA_cov": 98.0,
           "avg_IP_cov": 97.9
         },
         "2020": {
-          "marcel": 6.225,
-          "stan": 6.21,
-          "delta": -0.015,
+          "marcel": 6.299,
+          "stan": 6.247,
+          "delta": -0.052,
           "n": 12,
-          "avg_PA_cov": 97.3,
+          "avg_PA_cov": 98.2,
           "avg_IP_cov": 98.8
         },
         "2022": {
-          "marcel": 5.58,
-          "stan": 5.487,
-          "delta": -0.093,
+          "marcel": 5.829,
+          "stan": 5.722,
+          "delta": -0.107,
           "n": 12,
-          "avg_PA_cov": 95.9,
+          "avg_PA_cov": 98.3,
           "avg_IP_cov": 99.1
         },
         "2023": {
-          "marcel": 6.044,
-          "stan": 5.912,
-          "delta": -0.132,
+          "marcel": 6.034,
+          "stan": 5.889,
+          "delta": -0.146,
           "n": 12,
-          "avg_PA_cov": 96.5,
+          "avg_PA_cov": 97.6,
           "avg_IP_cov": 97.8
         },
         "2024": {
-          "marcel": 7.056,
-          "stan": 6.902,
-          "delta": -0.153,
+          "marcel": 7.046,
+          "stan": 6.895,
+          "delta": -0.151,
           "n": 12,
-          "avg_PA_cov": 96.1,
+          "avg_PA_cov": 97.4,
           "avg_IP_cov": 98.5
         },
         "2025": {
-          "marcel": 7.375,
-          "stan": 7.934,
-          "delta": 0.559,
+          "marcel": 7.37,
+          "stan": 7.943,
+          "delta": 0.573,
           "n": 12,
-          "avg_PA_cov": 95.0,
+          "avg_PA_cov": 97.1,
           "avg_IP_cov": 97.6
         }
       }
@@ -451,20 +451,20 @@
   },
   "recency_weighting": {
     "1.0": {
-      "n_hitters": 2159,
+      "n_hitters": 2208,
       "n_pitchers": 2164,
       "player_level": {
         "hitter_woba": {
-          "n": 2159,
-          "mae_marcel": 0.04979,
-          "mae_stan": 0.04935,
-          "delta_mae": 0.00045,
-          "paired_t_stat": 1.9224,
-          "paired_t_p": 0.054683,
-          "wilcoxon_p": 0.490886,
-          "bootstrap_p_stan_better": 0.974,
-          "cohens_d": 0.0414,
-          "stan_win_rate": "1053/2159 (48.8%)"
+          "n": 2208,
+          "mae_marcel": 0.05023,
+          "mae_stan": 0.0498,
+          "delta_mae": 0.00043,
+          "paired_t_stat": 1.8805,
+          "paired_t_p": 0.060175,
+          "wilcoxon_p": 0.554563,
+          "bootstrap_p_stan_better": 0.9712,
+          "cohens_d": 0.04,
+          "stan_win_rate": "1077/2208 (48.8%)"
         },
         "pitcher_era": {
           "n": 2164,
@@ -481,20 +481,20 @@
       }
     },
     "0.9": {
-      "n_hitters": 2159,
+      "n_hitters": 2208,
       "n_pitchers": 2164,
       "player_level": {
         "hitter_woba": {
-          "n": 2159,
-          "mae_marcel": 0.04979,
-          "mae_stan": 0.04931,
-          "delta_mae": 0.00048,
-          "paired_t_stat": 2.0586,
-          "paired_t_p": 0.039648,
-          "wilcoxon_p": 0.696844,
-          "bootstrap_p_stan_better": 0.9805,
-          "cohens_d": 0.0443,
-          "stan_win_rate": "1070/2159 (49.6%)"
+          "n": 2208,
+          "mae_marcel": 0.05023,
+          "mae_stan": 0.04976,
+          "delta_mae": 0.00047,
+          "paired_t_stat": 2.0172,
+          "paired_t_p": 0.043792,
+          "wilcoxon_p": 0.772804,
+          "bootstrap_p_stan_better": 0.9787,
+          "cohens_d": 0.0429,
+          "stan_win_rate": "1095/2208 (49.6%)"
         },
         "pitcher_era": {
           "n": 2164,
@@ -511,20 +511,20 @@
       }
     },
     "0.8": {
-      "n_hitters": 2159,
+      "n_hitters": 2208,
       "n_pitchers": 2164,
       "player_level": {
         "hitter_woba": {
-          "n": 2159,
-          "mae_marcel": 0.04979,
-          "mae_stan": 0.04928,
-          "delta_mae": 0.00052,
-          "paired_t_stat": 2.1846,
-          "paired_t_p": 0.029023,
-          "wilcoxon_p": 0.942761,
-          "bootstrap_p_stan_better": 0.9853,
-          "cohens_d": 0.047,
-          "stan_win_rate": "1090/2159 (50.5%)"
+          "n": 2208,
+          "mae_marcel": 0.05023,
+          "mae_stan": 0.04973,
+          "delta_mae": 0.00051,
+          "paired_t_stat": 2.1428,
+          "paired_t_p": 0.032237,
+          "wilcoxon_p": 0.996804,
+          "bootstrap_p_stan_better": 0.9854,
+          "cohens_d": 0.0456,
+          "stan_win_rate": "1121/2208 (50.8%)"
         },
         "pitcher_era": {
           "n": 2164,
