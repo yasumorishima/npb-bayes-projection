@@ -565,7 +565,7 @@ def player_level_tests(h_df, p_df, label="All years"):
     }
 
 
-def team_level_mae(h_df, p_df, years=None, label="All years"):
+def team_level_mae(h_df, p_df, years=None, label="All years", skip_impute=False):
     """Compute team-level Pythagorean MAE from player-level LOO-CV predictions.
 
     Step 12 fixes:
@@ -575,6 +575,10 @@ def team_level_mae(h_df, p_df, years=None, label="All years"):
     Step 12b:
       4. Foreign player integration — Ridge LOO-CV predictions for first-year
          foreign players merged into team RS/RA (improves coverage)
+
+    Args:
+        skip_impute: If True, skip league-avg imputation for missing players.
+            Use to compare pure model predictions without dilution.
     """
     actual = pd.read_csv(
         "https://raw.githubusercontent.com/yasumorishima/npb-prediction/main"
@@ -638,10 +642,11 @@ def team_level_mae(h_df, p_df, years=None, label="All years"):
         lambda r: impute.get((r["year"], r["team"]), {}).get("imputed_rs", 0), axis=1)
     merged["imputed_ra"] = merged.apply(
         lambda r: impute.get((r["year"], r["team"]), {}).get("imputed_ra", 0), axis=1)
-    merged["rs_marcel"] += merged["imputed_rs"]
-    merged["rs_stan"] += merged["imputed_rs"]
-    merged["ra_marcel"] += merged["imputed_ra"]
-    merged["ra_stan"] += merged["imputed_ra"]
+    if not skip_impute:
+        merged["rs_marcel"] += merged["imputed_rs"]
+        merged["rs_stan"] += merged["imputed_rs"]
+        merged["ra_marcel"] += merged["imputed_ra"]
+        merged["ra_stan"] += merged["imputed_ra"]
 
     # Step 12-3: Add coverage columns
     merged["PA_cov"] = merged.apply(
@@ -1096,9 +1101,73 @@ def main():
     print("\n[1a] Player-level significance tests — ALL years")
     player_all = player_level_tests(h_df, p_df, "All 8 years (λ=1.0)")
 
-    # 1b. Team-level MAE
-    print("\n[1b] Team-level MAE — ALL years")
+    # 1b. Team-level MAE (with imputation)
+    print("\n[1b] Team-level MAE — ALL years (with imputation)")
     team_all, team_detail = team_level_mae(h_df, p_df, label="All 8 years (λ=1.0)")
+
+    # 1c. Team-level MAE WITHOUT imputation + signal tracing
+    print("\n[1c] Team-level MAE — NO imputation (model players only)")
+    team_no_imp, team_detail_noimp = team_level_mae(
+        h_df, p_df, skip_impute=True, label="No imputation (λ=1.0)")
+
+    # 1d. Signal tracing: player → RS/RA → wins
+    print("\n[1d] Signal tracing: where does player-level advantage disappear?")
+    # PA-weighted player MAE (matches team RS aggregation)
+    h_all = h_df.copy()
+    h_all["abs_err_marcel"] = np.abs(h_all["actual"] - h_all["marcel"])
+    h_all["abs_err_stan"] = np.abs(h_all["actual"] - h_all["stan"])
+    h_all["wt_err_marcel"] = h_all["abs_err_marcel"] * h_all["actual_PA"]
+    h_all["wt_err_stan"] = h_all["abs_err_stan"] * h_all["actual_PA"]
+    total_pa = h_all["actual_PA"].sum()
+    wt_mae_m = h_all["wt_err_marcel"].sum() / total_pa
+    wt_mae_s = h_all["wt_err_stan"].sum() / total_pa
+    print(f"  Hitter wOBA MAE (uniform):      Marcel={player_all['hitter_woba']['mae_marcel']:.5f}"
+          f"  Stan={player_all['hitter_woba']['mae_stan']:.5f}"
+          f"  Δ={player_all['hitter_woba']['delta_mae']:+.5f}")
+    print(f"  Hitter wOBA MAE (PA-weighted):   Marcel={wt_mae_m:.5f}"
+          f"  Stan={wt_mae_s:.5f}  Δ={wt_mae_s - wt_mae_m:+.5f}")
+    # Check Stan win rate by PA quartile
+    h_all["pa_q"] = pd.qcut(h_all["actual_PA"], 4, labels=["Q1(low)", "Q2", "Q3", "Q4(high)"])
+    print(f"\n  Stan advantage by PA quartile:")
+    print(f"  {'Quartile':>10}  {'PA range':>12}  {'n':>5}  {'Stan wins':>10}  {'MAE Δ':>8}")
+    for q in ["Q1(low)", "Q2", "Q3", "Q4(high)"]:
+        sub = h_all[h_all["pa_q"] == q]
+        pa_lo, pa_hi = int(sub["actual_PA"].min()), int(sub["actual_PA"].max())
+        sw = int((sub["abs_err_stan"] < sub["abs_err_marcel"]).sum())
+        delta = float((sub["abs_err_marcel"] - sub["abs_err_stan"]).mean())
+        print(f"  {q:>10}  {pa_lo:>5}-{pa_hi:<5}  {len(sub):>5}  "
+              f"{sw}/{len(sub)} ({100*sw/len(sub):.0f}%)  {delta:+8.5f}")
+
+    # RS difference: Stan - Marcel per team-year
+    print(f"\n  RS/RA difference (Stan - Marcel) per team-year (with imputation):")
+    if len(team_detail) > 0:
+        td = team_detail.copy()
+        rs_diff = (td["rs_stan"] - td["rs_marcel"]) if "rs_stan" in td.columns else None
+        # Compute from W instead
+        w_diff = td["W_stan"] - td["W_marcel"]
+        print(f"  Win prediction: Stan - Marcel per team-year:")
+        print(f"    mean Δ = {w_diff.mean():+.3f}  std = {w_diff.std():.3f}  "
+              f"range = [{w_diff.min():.1f}, {w_diff.max():+.1f}]")
+        stan_closer = int((td["err_stan"].abs() < td["err_marcel"].abs()).sum())
+        print(f"    Stan closer to actual: {stan_closer}/{len(td)} "
+              f"({100*stan_closer/len(td):.1f}%)")
+
+    # Side-by-side comparison table
+    print(f"\n  ── Imputation effect comparison ──")
+    print(f"  {'':20s}  {'With impute':>12}  {'No impute':>12}  {'Difference':>12}")
+    print(f"  {'MAE Marcel':20s}  {team_all['mae_marcel']:>12.3f}  "
+          f"{team_no_imp['mae_marcel']:>12.3f}  "
+          f"{team_no_imp['mae_marcel'] - team_all['mae_marcel']:>+12.3f}")
+    print(f"  {'MAE Stan':20s}  {team_all['mae_stan']:>12.3f}  "
+          f"{team_no_imp['mae_stan']:>12.3f}  "
+          f"{team_no_imp['mae_stan'] - team_all['mae_stan']:>+12.3f}")
+    print(f"  {'Δ (Stan-Marcel)':20s}  {team_all['delta_mae']:>+12.3f}  "
+          f"{team_no_imp['delta_mae']:>+12.3f}  "
+          f"{team_no_imp['delta_mae'] - team_all['delta_mae']:>+12.3f}")
+    print(f"  {'p-value':20s}  {team_all['paired_t_p']:>12.4f}  "
+          f"{team_no_imp['paired_t_p']:>12.4f}")
+    print(f"  {'Bootstrap P(Stan<)':20s}  {team_all['bootstrap_p_stan_better']:>12.4f}  "
+          f"{team_no_imp['bootstrap_p_stan_better']:>12.4f}")
 
     # ── 2. 2021 (COVID) exclusion ──
     print("\n[2] 2021 exclusion — 7-year results")
