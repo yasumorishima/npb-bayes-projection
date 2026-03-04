@@ -1,12 +1,14 @@
 """
-Step 7a: Japanese player (all NPB players) Stan model with K%/BB% features.
+Step 7a / 11: Japanese player Stan model with K%/BB%/age features.
 
 Marcel prediction serves as the prior mean. The Stan model tests whether
-K%/BB% (skill-level stats) add predictive power beyond Marcel.
+K%/BB%/age (skill-level + aging) add predictive power beyond Marcel.
 
 Model:
-  Hitter:  actual_wOBA = Marcel_wOBA + delta_K * z_K + delta_BB * z_BB + noise
-  Pitcher: actual_ERA  = Marcel_ERA  + delta_K * z_K + delta_BB * z_BB + noise
+  Hitter:  actual_wOBA = Marcel_wOBA + delta_K * z_K + delta_BB * z_BB
+                        + delta_BABIP * z_babip + delta_age * z_age + noise
+  Pitcher: actual_ERA  = Marcel_ERA  + delta_K * z_K + delta_BB * z_BB
+                        + delta_age * z_age + noise
 
 Training: 2018-2021 (using 2015-2020 history for Marcel)
 Backtest: 2022-2025 (using 2019-2024 history for Marcel)
@@ -29,6 +31,9 @@ DATA_DIR = ROOT / "data"
 MODEL_DIR = DATA_DIR / "model"
 RAW_DIR   = DATA_DIR / "raw"
 
+# ── Age curve ───────────────────────────────────────────────────────────────
+PEAK_AGE = 29    # assumed peak age for NPB hitters/pitchers
+
 # ── Cutoffs ─────────────────────────────────────────────────────────────────
 MIN_PA  = 50     # minimum PA to include a hitter in training/test
 MIN_IP  = 20     # minimum IP to include a pitcher in training/test
@@ -49,6 +54,50 @@ def ip_to_decimal(ip: float) -> float:
     whole  = int(ip)
     thirds = round((ip - whole) * 10)
     return whole + thirds / 3.0
+
+
+# ── Age helpers ──────────────────────────────────────────────────────────────
+def normalize_name(name: str) -> str:
+    """Normalize full-width spaces to half-width for name matching."""
+    return name.replace("\u3000", " ").strip()
+
+
+def load_birthday_df() -> pd.DataFrame:
+    """Load birthday CSV with normalized player names."""
+    bday_df = pd.read_csv(RAW_DIR / "npb_player_birthdays.csv", encoding="utf-8-sig")
+    bday_df["player"] = bday_df["player"].apply(normalize_name)
+    bday_df["birthday"] = pd.to_datetime(bday_df["birthday"])
+    return bday_df
+
+
+def add_age_from_peak(df: pd.DataFrame, bday_df: pd.DataFrame) -> pd.DataFrame:
+    """Add age_from_peak column (age - PEAK_AGE) using birthday data.
+
+    Age is calculated as of April 1 of the target year (NPB season start).
+    Players without birthday data are dropped.
+    """
+    df = df.copy()
+    df["_norm_player"] = df["player"].apply(normalize_name)
+    bday_map = dict(zip(bday_df["player"], bday_df["birthday"]))
+
+    ages = []
+    for _, row in df.iterrows():
+        bday = bday_map.get(row["_norm_player"])
+        if bday is not None and not pd.isna(bday):
+            season_start = pd.Timestamp(year=int(row["year"]), month=4, day=1)
+            age = (season_start - bday).days / 365.25
+            ages.append(age - PEAK_AGE)
+        else:
+            ages.append(np.nan)
+
+    df["age_from_peak"] = ages
+    n_before = len(df)
+    df = df.dropna(subset=["age_from_peak"])
+    n_after = len(df)
+    if n_before > n_after:
+        print(f"    Age match: {n_after}/{n_before} ({100*n_after/n_before:.1f}%)")
+    df = df.drop(columns=["_norm_player"])
+    return df
 
 
 # ── Marcel helpers ────────────────────────────────────────────────────────────
@@ -180,8 +229,12 @@ def add_actual_era(pitchers_df: pd.DataFrame, target_year: int,
     return df.merge(actual[["player", "actual_IP", "actual_era"]], on="player", how="inner")
 
 
-def build_dataset(saber_df, pitchers_df, years):
-    """Build combined DataFrame for hitters and pitchers across given years."""
+def build_dataset(saber_df, pitchers_df, years, bday_df=None):
+    """Build combined DataFrame for hitters and pitchers across given years.
+
+    If bday_df is provided, adds age_from_peak column (players without birthday
+    data are dropped).
+    """
     hit_rows, pit_rows = [], []
     for yr in years:
         m_h = compute_marcel_woba(saber_df, yr)
@@ -200,6 +253,13 @@ def build_dataset(saber_df, pitchers_df, years):
 
     hitters  = pd.concat(hit_rows,  ignore_index=True) if hit_rows  else pd.DataFrame()
     pitchers = pd.concat(pit_rows,  ignore_index=True) if pit_rows  else pd.DataFrame()
+
+    if bday_df is not None:
+        if len(hitters) > 0:
+            hitters = add_age_from_peak(hitters, bday_df)
+        if len(pitchers) > 0:
+            pitchers = add_age_from_peak(pitchers, bday_df)
+
     return hitters, pitchers
 
 
@@ -234,18 +294,20 @@ def main(draws=1000, warmup=500):
     saber    = pd.read_csv(RAW_DIR / "npb_sabermetrics_2015_2025.csv",    encoding="utf-8-sig")
     pitchers = pd.read_csv(RAW_DIR / "npb_pitchers_2015_2025.csv",        encoding="utf-8-sig")
     saber    = saber.dropna(subset=["wOBA"])
+    bday_df  = load_birthday_df()
 
     print(f"  Sabermetrics: {len(saber):,} player-years")
     print(f"  Pitchers:     {len(pitchers):,} player-years")
+    print(f"  Birthdays:    {len(bday_df):,} players")
 
     # ── Build datasets ────────────────────────────────────────────────────────
     print("\nBuilding training data (2018-2021)...")
-    train_h, train_p = build_dataset(saber, pitchers, TRAIN_YEARS)
+    train_h, train_p = build_dataset(saber, pitchers, TRAIN_YEARS, bday_df)
     print(f"  Hitters train:  {len(train_h):3d}")
     print(f"  Pitchers train: {len(train_p):3d}")
 
     print("Building backtest data (2022-2025)...")
-    test_h, test_p = build_dataset(saber, pitchers, BACKTEST_YEARS)
+    test_h, test_p = build_dataset(saber, pitchers, BACKTEST_YEARS, bday_df)
     print(f"  Hitters test:   {len(test_h):3d}")
     print(f"  Pitchers test:  {len(test_p):3d}")
 
@@ -254,8 +316,8 @@ def main(draws=1000, warmup=500):
         return
 
     # ── Standardize ───────────────────────────────────────────────────────────
-    feat_cols_h = ["K_pct", "BB_pct", "BABIP"]
-    feat_cols_p = ["K_pct", "BB_pct"]
+    feat_cols_h = ["K_pct", "BB_pct", "BABIP", "age_from_peak"]
+    feat_cols_p = ["K_pct", "BB_pct", "age_from_peak"]
 
     train_z_h, test_z_h, h_means, h_stds = standardize_features(train_h, test_h, feat_cols_h)
     train_z_p, test_z_p, p_means, p_stds = standardize_features(train_p, test_p, feat_cols_p)
@@ -268,12 +330,14 @@ def main(draws=1000, warmup=500):
         "z_K":                train_z_h[:, 0].tolist(),
         "z_BB":               train_z_h[:, 1].tolist(),
         "z_babip":            train_z_h[:, 2].tolist(),
+        "z_age":              train_z_h[:, 3].tolist(),
         "actual_woba":        train_h["actual_woba"].tolist(),
         "N_pred":             len(test_h),
         "marcel_woba_pred":   test_h["marcel_woba"].tolist(),
         "z_K_pred":           test_z_h[:, 0].tolist(),
         "z_BB_pred":          test_z_h[:, 1].tolist(),
         "z_babip_pred":       test_z_h[:, 2].tolist(),
+        "z_age_pred":         test_z_h[:, 3].tolist(),
     }
     fit_h = run_stan_model(ROOT / "models" / "hitter_jpn.stan", stan_data_h, draws, warmup)
 
@@ -282,7 +346,9 @@ def main(draws=1000, warmup=500):
     delta_K_h     = float(fit_h.stan_variable("delta_K").mean())
     delta_BB_h    = float(fit_h.stan_variable("delta_BB").mean())
     delta_BABIP_h = float(fit_h.stan_variable("delta_BABIP").mean())
-    print(f"  delta_K={delta_K_h:+.4f}  delta_BB={delta_BB_h:+.4f}  delta_BABIP={delta_BABIP_h:+.4f}")
+    delta_age_h   = float(fit_h.stan_variable("delta_age").mean())
+    print(f"  delta_K={delta_K_h:+.4f}  delta_BB={delta_BB_h:+.4f}  "
+          f"delta_BABIP={delta_BABIP_h:+.4f}  delta_age={delta_age_h:+.4f}")
 
     test_h = test_h.copy()
     test_h["stan_woba"] = stan_pred_h
@@ -299,18 +365,22 @@ def main(draws=1000, warmup=500):
         "marcel_era":      train_p["marcel_era"].tolist(),
         "z_K":             train_z_p[:, 0].tolist(),
         "z_BB":            train_z_p[:, 1].tolist(),
+        "z_age":           train_z_p[:, 2].tolist(),
         "actual_era":      train_p["actual_era"].tolist(),
         "N_pred":          len(test_p),
         "marcel_era_pred": test_p["marcel_era"].tolist(),
         "z_K_pred":        test_z_p[:, 0].tolist(),
         "z_BB_pred":       test_z_p[:, 1].tolist(),
+        "z_age_pred":      test_z_p[:, 2].tolist(),
     }
     fit_p = run_stan_model(ROOT / "models" / "pitcher_jpn.stan", stan_data_p, draws, warmup)
 
     stan_pred_p = fit_p.stan_variable("stan_pred").mean(axis=0)
     delta_K_p   = float(fit_p.stan_variable("delta_K").mean())
     delta_BB_p  = float(fit_p.stan_variable("delta_BB").mean())
-    print(f"  delta_K={delta_K_p:+.4f}  delta_BB={delta_BB_p:+.4f}")
+    delta_age_p = float(fit_p.stan_variable("delta_age").mean())
+    print(f"  delta_K={delta_K_p:+.4f}  delta_BB={delta_BB_p:+.4f}  "
+          f"delta_age={delta_age_p:+.4f}")
 
     test_p = test_p.copy()
     test_p["stan_era"] = stan_pred_p
@@ -337,6 +407,7 @@ def main(draws=1000, warmup=500):
             "delta_K":     round(delta_K_h, 4),
             "delta_BB":    round(delta_BB_h, 4),
             "delta_BABIP": round(delta_BABIP_h, 4),
+            "delta_age":   round(delta_age_h, 4),
             "n_test":      len(test_h),
             "feature_means": h_means,
             "feature_stds":  h_stds,
@@ -347,6 +418,7 @@ def main(draws=1000, warmup=500):
             "delta_mae":  round(mae_stan_p - mae_marcel_p, 4),
             "delta_K":    round(delta_K_p, 4),
             "delta_BB":   round(delta_BB_p, 4),
+            "delta_age":  round(delta_age_p, 4),
             "n_test":     len(test_p),
             "feature_means": p_means,
             "feature_stds":  p_stds,

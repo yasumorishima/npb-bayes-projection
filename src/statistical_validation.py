@@ -1,14 +1,16 @@
-"""Step 10: Statistical validation of Marcel vs Stan comparison.
+"""Step 11: Statistical validation — age curve + recency weighting.
 
-Three analyses:
+Four analyses:
   1. Player-level significance tests (n=1000+ hitters + pitchers)
      — 8-year LOO-CV with Ridge regression as Stan approximation
+     — Now includes age_from_peak feature
   2. 2021 (COVID year) exclusion — 7-year results
   3. Foreign player Stan v1 LOO-CV (2015-2025)
+  4. Recency weighting comparison (λ = 1.0, 0.9, 0.8)
 
 Ridge alphas (= sigma^2 / tau^2, posterior mean approximation):
-  Japanese hitter:  0.053^2 / 0.05^2 = 1.12  (3 features: K%, BB%, BABIP)
-  Japanese pitcher: 1.10^2  / 0.5^2  = 4.84  (2 features: K%, BB%)
+  Japanese hitter:  0.053^2 / 0.05^2 = 1.12  (4 features: K%, BB%, BABIP, age)
+  Japanese pitcher: 1.10^2  / 0.5^2  = 4.84  (3 features: K%, BB%, age)
   Foreign hitter:   0.05^2  / 0.02^2 = 6.25  (3 features: wOBA, K%, BB%)
   Foreign pitcher:  1.0^2   / 0.5^2  = 4.0   (4 features: ERA, FIP, K%, BB%)
 
@@ -30,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from stan_jpn_model import (
     build_dataset,
     ip_to_decimal,
+    load_birthday_df,
     standardize_features,
 )
 
@@ -66,24 +69,45 @@ def ridge_fit_predict(X_train, y_train, X_test, alpha):
     return X_test @ beta, beta
 
 
+def weighted_ridge_fit_predict(X_train, y_train, X_test, alpha, weights):
+    """Weighted Ridge: beta = (X'WX + alpha*I)^{-1} X'Wy."""
+    n_feat = X_train.shape[1]
+    W = np.diag(weights)
+    beta = np.linalg.solve(
+        X_train.T @ W @ X_train + alpha * np.eye(n_feat),
+        X_train.T @ W @ y_train,
+    )
+    return X_test @ beta, beta
+
+
 # ── Analysis 1: Japanese Player LOO-CV ────────────────────────────────────────
 
 
-def run_jpn_loocv():
-    """8-year LOO-CV for Japanese players. Returns player-level prediction DataFrames."""
+def run_jpn_loocv(decay_lambda=1.0):
+    """8-year LOO-CV for Japanese players with age feature and recency weighting.
+
+    Args:
+        decay_lambda: Exponential decay factor for recency weighting.
+            w_i = lambda^|holdout_year - sample_year|
+            1.0 = no decay (uniform), 0.9 = mild decay, 0.8 = strong decay.
+
+    Returns:
+        Player-level prediction DataFrames for hitters and pitchers.
+    """
     saber = pd.read_csv(RAW_DIR / "npb_sabermetrics_2015_2025.csv", encoding="utf-8-sig")
     pitchers = pd.read_csv(RAW_DIR / "npb_pitchers_2015_2025.csv", encoding="utf-8-sig")
     saber = saber.dropna(subset=["wOBA"])
+    bday_df = load_birthday_df()
 
-    feat_h = ["K_pct", "BB_pct", "BABIP"]
-    feat_p = ["K_pct", "BB_pct"]
+    feat_h = ["K_pct", "BB_pct", "BABIP", "age_from_peak"]
+    feat_p = ["K_pct", "BB_pct", "age_from_peak"]
 
     all_h, all_p = [], []
 
     for hold_yr in JPN_YEARS:
         train_years = [y for y in JPN_YEARS if y != hold_yr]
-        train_h, train_p = build_dataset(saber, pitchers, train_years)
-        test_h, test_p = build_dataset(saber, pitchers, [hold_yr])
+        train_h, train_p = build_dataset(saber, pitchers, train_years, bday_df)
+        test_h, test_p = build_dataset(saber, pitchers, [hold_yr], bday_df)
 
         if len(test_h) == 0 or len(test_p) == 0:
             continue
@@ -91,7 +115,15 @@ def run_jpn_loocv():
         # Hitters
         train_z_h, test_z_h, _, _ = standardize_features(train_h, test_h, feat_h)
         y_h = (train_h["actual_woba"] - train_h["marcel_woba"]).values
-        delta_h, _ = ridge_fit_predict(train_z_h, y_h, test_z_h, ALPHA_JPN_H)
+
+        if decay_lambda < 1.0:
+            w_h = np.array([decay_lambda ** abs(hold_yr - yr)
+                            for yr in train_h["year"].values])
+            delta_h, _ = weighted_ridge_fit_predict(
+                train_z_h, y_h, test_z_h, ALPHA_JPN_H, w_h)
+        else:
+            delta_h, _ = ridge_fit_predict(train_z_h, y_h, test_z_h, ALPHA_JPN_H)
+
         stan_woba = test_h["marcel_woba"].values + delta_h
 
         for i, (_, row) in enumerate(test_h.iterrows()):
@@ -104,7 +136,15 @@ def run_jpn_loocv():
         # Pitchers
         train_z_p, test_z_p, _, _ = standardize_features(train_p, test_p, feat_p)
         y_p = (train_p["actual_era"] - train_p["marcel_era"]).values
-        delta_p, _ = ridge_fit_predict(train_z_p, y_p, test_z_p, ALPHA_JPN_P)
+
+        if decay_lambda < 1.0:
+            w_p = np.array([decay_lambda ** abs(hold_yr - yr)
+                            for yr in train_p["year"].values])
+            delta_p, _ = weighted_ridge_fit_predict(
+                train_z_p, y_p, test_z_p, ALPHA_JPN_P, w_p)
+        else:
+            delta_p, _ = ridge_fit_predict(train_z_p, y_p, test_z_p, ALPHA_JPN_P)
+
         stan_era = test_p["marcel_era"].values + delta_p
 
         for i, (_, row) in enumerate(test_p.iterrows()):
@@ -473,21 +513,21 @@ def run_foreign_loocv():
 
 def main():
     print("=" * 70)
-    print("Step 10: Statistical Validation — Marcel vs Stan")
+    print("Step 11: Statistical Validation — Age Curve + Recency Weighting")
     print("=" * 70)
 
-    # ── 1. Japanese LOO-CV ──
-    print("\n[1] Japanese Player 8-year LOO-CV (2018-2025)")
-    h_df, p_df = run_jpn_loocv()
+    # ── 1. Japanese LOO-CV (λ=1.0, uniform weighting) ──
+    print("\n[1] Japanese Player 8-year LOO-CV (2018-2025) — λ=1.0 (uniform)")
+    h_df, p_df = run_jpn_loocv(decay_lambda=1.0)
     print(f"  Collected: {len(h_df)} hitter-years, {len(p_df)} pitcher-years")
 
     # 1a. Player-level significance tests
     print("\n[1a] Player-level significance tests — ALL years")
-    player_all = player_level_tests(h_df, p_df, "All 8 years")
+    player_all = player_level_tests(h_df, p_df, "All 8 years (λ=1.0)")
 
     # 1b. Team-level MAE
     print("\n[1b] Team-level MAE — ALL years")
-    team_all = team_level_mae(h_df, p_df, label="All 8 years")
+    team_all = team_level_mae(h_df, p_df, label="All 8 years (λ=1.0)")
 
     # ── 2. 2021 (COVID) exclusion ──
     print("\n[2] 2021 exclusion — 7-year results")
@@ -495,26 +535,43 @@ def main():
     p_no21 = p_df[p_df["year"] != 2021]
     years_no21 = [y for y in JPN_YEARS if y != 2021]
 
-    player_no21 = player_level_tests(h_no21, p_no21, "Excluding 2021")
-    team_no21 = team_level_mae(h_no21, p_no21, years=years_no21, label="Excluding 2021")
+    player_no21 = player_level_tests(h_no21, p_no21, "Excluding 2021 (λ=1.0)")
+    team_no21 = team_level_mae(h_no21, p_no21, years=years_no21,
+                               label="Excluding 2021 (λ=1.0)")
 
     # ── 3. Foreign player LOO-CV ──
     print("\n[3] Foreign Player Stan v1 LOO-CV (2015-2025)")
     foreign = run_foreign_loocv()
 
+    # ── 4. Recency weighting comparison ──
+    print("\n[4] Recency Weighting Comparison")
+    recency_results = {}
+    for lam in [1.0, 0.9, 0.8]:
+        print(f"\n  --- λ = {lam} ---")
+        h_lam, p_lam = run_jpn_loocv(decay_lambda=lam)
+        res = player_level_tests(h_lam, p_lam, f"λ={lam}")
+        recency_results[str(lam)] = {
+            "n_hitters": len(h_lam),
+            "n_pitchers": len(p_lam),
+            "player_level": res,
+        }
+
     # ── Save results ──
     output = {
-        "step": "10_statistical_validation",
+        "step": "11_age_curve_recency_weighting",
         "japanese_loocv": {
             "years": JPN_YEARS,
             "n_hitters": len(h_df),
             "n_pitchers": len(p_df),
+            "features_hitter": ["K_pct", "BB_pct", "BABIP", "age_from_peak"],
+            "features_pitcher": ["K_pct", "BB_pct", "age_from_peak"],
             "player_level_all": player_all,
             "team_level_all": team_all,
             "player_level_no2021": player_no21,
             "team_level_no2021": team_no21,
         },
         "foreign_loocv": foreign,
+        "recency_weighting": recency_results,
         "ridge_alphas": {
             "jpn_hitter": round(ALPHA_JPN_H, 3),
             "jpn_pitcher": round(ALPHA_JPN_P, 3),
