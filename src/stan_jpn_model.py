@@ -37,8 +37,8 @@ RAW_DIR   = DATA_DIR / "raw"
 PEAK_AGE = 29    # assumed peak age for NPB hitters/pitchers
 
 # ── Cutoffs ─────────────────────────────────────────────────────────────────
-MIN_PA  = 50     # minimum PA to include a hitter in training/test
-MIN_IP  = 20     # minimum IP to include a pitcher in training/test
+MIN_PA  = 30     # minimum PA (lowered from 50 for broader coverage, Step 14B)
+MIN_IP  = 10     # minimum IP (lowered from 20 for broader coverage, Step 14B)
 
 # ── Marcel parameters ────────────────────────────────────────────────────────
 MARCEL_WEIGHTS   = {1: 5, 2: 4, 3: 3}   # years back: weight
@@ -209,6 +209,111 @@ def add_actual_fip(pitchers_df: pd.DataFrame, target_year: int,
     return df.merge(actual[["player", "actual_IP", "actual_fip"]], on="player", how="inner")
 
 
+def compute_rookie_avg_woba(saber_df: pd.DataFrame, target_year: int) -> float:
+    """PA-weighted average wOBA for rookies (first 1軍 year, 2016+).
+
+    Uses rookies who debuted between 2016 and target_year-1.
+    Falls back to league average if no rookie data available.
+    """
+    first_yr = saber_df.groupby("player")["year"].min()
+    rookie_players = first_yr[(first_yr >= 2016) & (first_yr < target_year)].index
+    rookies = saber_df[saber_df["player"].isin(rookie_players)].copy()
+    rookies = rookies.merge(
+        first_yr.rename("first_year"), left_on="player", right_index=True
+    )
+    rookies = rookies[rookies["year"] == rookies["first_year"]]
+    rookies = rookies[(rookies["PA"] >= MIN_PA) & rookies["wOBA"].notna()]
+    if len(rookies) == 0:
+        return league_avg_woba(saber_df, target_year)
+    return float(np.average(rookies["wOBA"], weights=rookies["PA"]))
+
+
+def compute_rookie_avg_era(pitchers_df: pd.DataFrame, target_year: int) -> float:
+    """IP-weighted average ERA for rookies (first 1軍 year, 2016+).
+
+    Falls back to league average if no rookie data available.
+    """
+    pdf = pitchers_df.copy()
+    pdf["_IP_dec"] = pdf["IP"].apply(ip_to_decimal)
+    pdf["_ERA_num"] = pd.to_numeric(pdf["ERA"], errors="coerce")
+    first_yr = pdf.groupby("player")["year"].min()
+    rookie_players = first_yr[(first_yr >= 2016) & (first_yr < target_year)].index
+    rookies = pdf[pdf["player"].isin(rookie_players)].copy()
+    rookies = rookies.merge(
+        first_yr.rename("first_year"), left_on="player", right_index=True
+    )
+    rookies = rookies[rookies["year"] == rookies["first_year"]]
+    rookies = rookies[(rookies["_IP_dec"] >= MIN_IP) & rookies["_ERA_num"].notna()]
+    if len(rookies) == 0:
+        return league_avg_era(pitchers_df, target_year)
+    return float(np.average(rookies["_ERA_num"], weights=rookies["_IP_dec"]))
+
+
+def _add_uncovered_hitters(saber_df: pd.DataFrame, yr: int,
+                           marcel_df: pd.DataFrame) -> pd.DataFrame:
+    """Add uncovered hitters with rookie average as Marcel projection (Step 14A)."""
+    actual = saber_df[
+        (saber_df["year"] == yr) & (saber_df["PA"] >= MIN_PA) & saber_df["wOBA"].notna()
+    ]
+    actual = actual.sort_values("PA", ascending=False).drop_duplicates("player", keep="first")
+    projected = set(marcel_df["player"]) if len(marcel_df) > 0 else set()
+    missing = actual[~actual["player"].isin(projected)]
+    if len(missing) == 0:
+        return marcel_df
+    rookie_woba = compute_rookie_avg_woba(saber_df, yr)
+    lg = league_avg_woba(saber_df, yr)
+    new_rows = pd.DataFrame({
+        "player": missing["player"].values,
+        "team": missing["team"].values,
+        "year": yr,
+        "marcel_woba": round(rookie_woba, 5),
+        "lg_avg_woba": round(lg, 5),
+        "pa_stability": 0.5,
+    })
+    if len(marcel_df) == 0:
+        return new_rows
+    return pd.concat([marcel_df, new_rows], ignore_index=True)
+
+
+def _add_uncovered_pitchers(pitchers_df: pd.DataFrame, yr: int,
+                            marcel_df: pd.DataFrame, metric: str = "era") -> pd.DataFrame:
+    """Add uncovered pitchers with rookie average as Marcel projection (Step 14A)."""
+    pdf = pitchers_df.copy()
+    pdf["_IP_dec"] = pdf["IP"].apply(ip_to_decimal)
+    pdf["_ERA_num"] = pd.to_numeric(pdf["ERA"], errors="coerce")
+    actual = pdf[(pdf["year"] == yr) & (pdf["_IP_dec"] >= MIN_IP) & pdf["_ERA_num"].notna()]
+    actual = actual.sort_values("_IP_dec", ascending=False).drop_duplicates("player", keep="first")
+    projected = set(marcel_df["player"]) if len(marcel_df) > 0 else set()
+    missing = actual[~actual["player"].isin(projected)]
+    if len(missing) == 0:
+        return marcel_df
+    if metric == "era":
+        rookie_val = compute_rookie_avg_era(pitchers_df, yr)
+        lg = league_avg_era(pitchers_df, yr)
+        new_rows = pd.DataFrame({
+            "player": missing["player"].values,
+            "team": missing["team"].values,
+            "year": yr,
+            "marcel_era": round(rookie_val, 4),
+            "lg_avg_era": round(lg, 4),
+            "ip_stability": 0.5,
+        })
+    else:
+        rookie_val = league_avg_fip(pitchers_df, yr)
+        lg = league_avg_fip(pitchers_df, yr)
+        new_rows = pd.DataFrame({
+            "player": missing["player"].values,
+            "team": missing["team"].values,
+            "year": yr,
+            "marcel_fip": round(rookie_val, 4),
+            "lg_avg_fip": round(lg, 4),
+            "ip_stability": 0.5,
+        })
+    if len(marcel_df) == 0:
+        return new_rows
+    return pd.concat([marcel_df, new_rows], ignore_index=True)
+
+
 def compute_marcel_woba(saber_df: pd.DataFrame, target_year: int) -> pd.DataFrame:
     """Marcel wOBA projection for all players with sufficient history.
 
@@ -305,8 +410,12 @@ def add_kpct_bbpct_hitter(saber_df: pd.DataFrame, target_year: int,
     prev["prev_woba_dev_sq"] = (prev["wOBA"] - lg_avg) ** 2
     merged = marcel_df.merge(
         prev[["player", "K_pct", "BB_pct", "BABIP", "prev_woba_dev_sq"]],
-        on="player", how="inner",
+        on="player", how="left",
     )
+    # Fill missing features for players without t-1 data (rookies, injured)
+    for col in ["K_pct", "BB_pct", "BABIP", "prev_woba_dev_sq"]:
+        col_mean = merged[col].mean()
+        merged[col] = merged[col].fillna(col_mean if not pd.isna(col_mean) else 0.0)
     return merged
 
 
@@ -331,8 +440,12 @@ def add_kpct_bbpct_pitcher(pitchers_df: pd.DataFrame, target_year: int,
     prev["prev_babip_p"] = (prev["HA"] - prev["HRA"]) / babip_denom
     merged = marcel_df.merge(
         prev[["player", "K_pct", "BB_pct", "K_per_9", "BB_per_9", "prev_babip_p"]],
-        on="player", how="inner",
+        on="player", how="left",
     )
+    # Fill missing features for players without t-1 data (rookies, injured)
+    for col in ["K_pct", "BB_pct", "K_per_9", "BB_per_9", "prev_babip_p"]:
+        col_mean = merged[col].mean()
+        merged[col] = merged[col].fillna(col_mean if not pd.isna(col_mean) else 0.0)
     return merged
 
 
@@ -353,11 +466,15 @@ def add_actual_era(pitchers_df: pd.DataFrame, target_year: int,
     return df.merge(actual[["player", "actual_IP", "actual_era"]], on="player", how="inner")
 
 
-def build_dataset(saber_df, pitchers_df, years, bday_df=None):
+def build_dataset(saber_df, pitchers_df, years, bday_df=None, include_rookies=True):
     """Build combined DataFrame for hitters and pitchers across given years.
 
     If bday_df is provided, adds age_from_peak column (players without birthday
     data are dropped).
+
+    If include_rookies is True (Step 14A), adds first-year players with no Marcel
+    projection using rookie average wOBA/ERA as their Marcel value.  Features are
+    filled with column means via left join (z-score ≈ 0 → Ridge correction ≈ 0).
 
     Returns (hitters, pitchers_era, pitchers_fip). pitchers_fip is empty
     DataFrame if pitchers_df has no FIP column.
@@ -366,6 +483,8 @@ def build_dataset(saber_df, pitchers_df, years, bday_df=None):
     has_fip = "FIP" in pitchers_df.columns
     for yr in years:
         m_h = compute_marcel_woba(saber_df, yr)
+        if include_rookies:
+            m_h = _add_uncovered_hitters(saber_df, yr, m_h)
         if len(m_h) == 0:
             continue
         m_h = add_kpct_bbpct_hitter(saber_df, yr, m_h)
@@ -373,6 +492,8 @@ def build_dataset(saber_df, pitchers_df, years, bday_df=None):
         hit_rows.append(m_h)
 
         m_p = compute_marcel_era(pitchers_df, yr)
+        if include_rookies:
+            m_p = _add_uncovered_pitchers(pitchers_df, yr, m_p, metric="era")
         if len(m_p) == 0:
             continue
         m_p = add_kpct_bbpct_pitcher(pitchers_df, yr, m_p)
@@ -381,6 +502,8 @@ def build_dataset(saber_df, pitchers_df, years, bday_df=None):
 
         if has_fip:
             m_pf = compute_marcel_fip(pitchers_df, yr)
+            if include_rookies:
+                m_pf = _add_uncovered_pitchers(pitchers_df, yr, m_pf, metric="fip")
             if len(m_pf) > 0:
                 m_pf = add_kpct_bbpct_pitcher(pitchers_df, yr, m_pf)
                 m_pf = add_actual_fip(pitchers_df, yr, m_pf)

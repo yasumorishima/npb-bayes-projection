@@ -1290,13 +1290,13 @@ def main():
 
     # ── Save results ──
     output = {
-        "step": "11b_fip_pitcher_model",
+        "step": "14_coverage_improvement",
         "japanese_loocv": {
             "years": JPN_YEARS,
             "n_hitters": len(h_df),
             "n_pitchers": len(p_df),
-            "features_hitter": ["K_pct", "BB_pct", "BABIP", "age_from_peak"],
-            "features_pitcher": ["K_pct", "BB_pct", "age_from_peak"],
+            "features_hitter": ["K_pct", "BB_pct", "BABIP", "age_from_peak", "pa_stability", "prev_woba_dev_sq"],
+            "features_pitcher": ["K_pct", "BB_pct", "age_from_peak", "ip_stability", "prev_babip_p"],
             "player_level_all": player_all,
             "team_level_all": team_all,
             "player_level_no2021": player_no21,
@@ -1304,17 +1304,17 @@ def main():
         },
         "pitcher_fip": {
             "n": len(p_fip_df),
-            "features": ["K_pct", "BB_pct", "age_from_peak"],
+            "features": ["K_pct", "BB_pct", "age_from_peak", "ip_stability", "prev_babip_p"],
             "player_level": pitcher_fip_results,
         },
         "pitcher_era_k9": {
             "n": len(p_k9_df),
-            "features": ["K_pct", "BB_pct", "K_per_9", "BB_per_9", "age_from_peak"],
+            "features": ["K_pct", "BB_pct", "K_per_9", "BB_per_9", "age_from_peak", "ip_stability", "prev_babip_p"],
             "player_level": pitcher_k9_results,
         },
         "pitcher_fip_k9": {
             "n": len(p_fip_k9_df),
-            "features": ["K_pct", "BB_pct", "K_per_9", "BB_per_9", "age_from_peak"],
+            "features": ["K_pct", "BB_pct", "K_per_9", "BB_per_9", "age_from_peak", "ip_stability", "prev_babip_p"],
             "player_level": pitcher_fip_k9_results,
         },
         "foreign_loocv": foreign,
