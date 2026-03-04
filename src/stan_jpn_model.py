@@ -282,16 +282,21 @@ def add_kpct_bbpct_hitter(saber_df: pd.DataFrame, target_year: int,
 
 def add_kpct_bbpct_pitcher(pitchers_df: pd.DataFrame, target_year: int,
                             marcel_df: pd.DataFrame) -> pd.DataFrame:
-    """Add K%/BB% features from the year before the target year."""
+    """Add K%/BB%/K_per_9/BB_per_9 features from the year before the target year."""
     prev = pitchers_df[pitchers_df["year"] == target_year - 1][
         ["player", "IP", "SO", "BB", "BF"]
     ].copy()
     prev["IP_dec"] = prev["IP"].apply(ip_to_decimal)
     prev = prev[prev["IP_dec"] >= MIN_IP]
     prev = prev[prev["BF"] > 0]
-    prev["K_pct"]  = prev["SO"] / prev["BF"]
-    prev["BB_pct"] = prev["BB"] / prev["BF"]
-    merged = marcel_df.merge(prev[["player", "K_pct", "BB_pct"]], on="player", how="inner")
+    prev["K_pct"]    = prev["SO"] / prev["BF"]
+    prev["BB_pct"]   = prev["BB"] / prev["BF"]
+    prev["K_per_9"]  = prev["SO"] * 9.0 / prev["IP_dec"]
+    prev["BB_per_9"] = prev["BB"] * 9.0 / prev["IP_dec"]
+    merged = marcel_df.merge(
+        prev[["player", "K_pct", "BB_pct", "K_per_9", "BB_per_9"]],
+        on="player", how="inner",
+    )
     return merged
 
 

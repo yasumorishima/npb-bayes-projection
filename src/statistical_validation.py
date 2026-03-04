@@ -94,8 +94,10 @@ def run_jpn_loocv(decay_lambda=1.0):
             1.0 = no decay (uniform), 0.9 = mild decay, 0.8 = strong decay.
 
     Returns:
-        (h_df, p_df, p_fip_df) — Player-level prediction DataFrames for
-        hitters, pitchers (ERA), and pitchers (FIP).
+        (h_df, p_df, p_fip_df, p_k9_df, p_fip_k9_df) — Player-level
+        prediction DataFrames for hitters, pitchers (ERA 3feat),
+        pitchers (FIP 3feat), pitchers (ERA 5feat+K/9+BB/9),
+        pitchers (FIP 5feat+K/9+BB/9).
     """
     saber = pd.read_csv(RAW_DIR / "npb_sabermetrics_2015_2025.csv", encoding="utf-8-sig")
     pitchers = pd.read_csv(RAW_DIR / "npb_pitchers_2015_2025.csv", encoding="utf-8-sig")
@@ -105,8 +107,10 @@ def run_jpn_loocv(decay_lambda=1.0):
 
     feat_h = ["K_pct", "BB_pct", "BABIP", "age_from_peak"]
     feat_p = ["K_pct", "BB_pct", "age_from_peak"]
+    feat_p_k9 = ["K_pct", "BB_pct", "K_per_9", "BB_per_9", "age_from_peak"]
 
     all_h, all_p, all_p_fip = [], [], []
+    all_p_k9, all_p_fip_k9 = [], []
 
     for hold_yr in JPN_YEARS:
         train_years = [y for y in JPN_YEARS if y != hold_yr]
@@ -158,6 +162,26 @@ def run_jpn_loocv(decay_lambda=1.0):
                 "stan": stan_era[i], "actual_IP": row["actual_IP"],
             })
 
+        # Pitchers (ERA + K/9 + BB/9)
+        train_z_pk9, test_z_pk9, _, _ = standardize_features(
+            train_p, test_p, feat_p_k9)
+
+        if decay_lambda < 1.0:
+            delta_pk9, _ = weighted_ridge_fit_predict(
+                train_z_pk9, y_p, test_z_pk9, ALPHA_JPN_P, w_p)
+        else:
+            delta_pk9, _ = ridge_fit_predict(
+                train_z_pk9, y_p, test_z_pk9, ALPHA_JPN_P)
+
+        stan_era_k9 = test_p["marcel_era"].values + delta_pk9
+
+        for i, (_, row) in enumerate(test_p.iterrows()):
+            all_p_k9.append({
+                "year": hold_yr, "player": row["player"], "team": row["team"],
+                "actual": row["actual_era"], "marcel": row["marcel_era"],
+                "stan": stan_era_k9[i], "actual_IP": row["actual_IP"],
+            })
+
         # Pitchers (FIP)
         if len(test_p_fip) > 0 and len(train_p_fip) > 0:
             train_z_pf, test_z_pf, _, _ = standardize_features(
@@ -182,7 +206,28 @@ def run_jpn_loocv(decay_lambda=1.0):
                     "stan": stan_fip[i], "actual_IP": row["actual_IP"],
                 })
 
-    return pd.DataFrame(all_h), pd.DataFrame(all_p), pd.DataFrame(all_p_fip)
+            # FIP + K/9 + BB/9
+            train_z_pfk9, test_z_pfk9, _, _ = standardize_features(
+                train_p_fip, test_p_fip, feat_p_k9)
+
+            if decay_lambda < 1.0:
+                delta_pfk9, _ = weighted_ridge_fit_predict(
+                    train_z_pfk9, y_pf, test_z_pfk9, ALPHA_JPN_P, w_pf)
+            else:
+                delta_pfk9, _ = ridge_fit_predict(
+                    train_z_pfk9, y_pf, test_z_pfk9, ALPHA_JPN_P)
+
+            stan_fip_k9 = test_p_fip["marcel_fip"].values + delta_pfk9
+
+            for i, (_, row) in enumerate(test_p_fip.iterrows()):
+                all_p_fip_k9.append({
+                    "year": hold_yr, "player": row["player"], "team": row["team"],
+                    "actual": row["actual_fip"], "marcel": row["marcel_fip"],
+                    "stan": stan_fip_k9[i], "actual_IP": row["actual_IP"],
+                })
+
+    return (pd.DataFrame(all_h), pd.DataFrame(all_p), pd.DataFrame(all_p_fip),
+            pd.DataFrame(all_p_k9), pd.DataFrame(all_p_fip_k9))
 
 
 def _metric_test(df, label, metric_name):
@@ -548,9 +593,11 @@ def main():
 
     # ── 1. Japanese LOO-CV (λ=1.0, uniform weighting) ──
     print("\n[1] Japanese Player 8-year LOO-CV (2018-2025) — λ=1.0 (uniform)")
-    h_df, p_df, p_fip_df = run_jpn_loocv(decay_lambda=1.0)
+    h_df, p_df, p_fip_df, p_k9_df, p_fip_k9_df = run_jpn_loocv(decay_lambda=1.0)
     print(f"  Collected: {len(h_df)} hitter-years, {len(p_df)} pitcher-years"
-          f", {len(p_fip_df)} pitcher-FIP-years")
+          f", {len(p_fip_df)} pitcher-FIP-years"
+          f", {len(p_k9_df)} pitcher-ERA+K/9-years"
+          f", {len(p_fip_k9_df)} pitcher-FIP+K/9-years")
 
     # 1a. Player-level significance tests
     print("\n[1a] Player-level significance tests — ALL years")
@@ -579,7 +626,7 @@ def main():
     recency_results = {}
     for lam in [1.0, 0.9, 0.8]:
         print(f"\n  --- λ = {lam} ---")
-        h_lam, p_lam, _ = run_jpn_loocv(decay_lambda=lam)
+        h_lam, p_lam, *_ = run_jpn_loocv(decay_lambda=lam)
         res = player_level_tests(h_lam, p_lam, f"λ={lam}")
         recency_results[str(lam)] = {
             "n_hitters": len(h_lam),
@@ -606,6 +653,34 @@ def main():
     else:
         print("\n[5] FIP — SKIPPED (no FIP data)")
 
+    # ── 6. K/9 + BB/9 feature addition ──
+    pitcher_k9_results = {}
+    pitcher_fip_k9_results = {}
+    if len(p_k9_df) > 0:
+        print("\n[6] K/9 + BB/9 — Pitcher LOO-CV (2018-2025)")
+        pitcher_k9_results = _metric_test(
+            p_k9_df, "All 8 years (λ=1.0)", "pitcher_era+K/9+BB/9")
+
+        if len(p_fip_k9_df) > 0:
+            pitcher_fip_k9_results = _metric_test(
+                p_fip_k9_df, "All 8 years (λ=1.0)", "pitcher_fip+K/9+BB/9")
+
+        # Side-by-side comparison (all 4 variants)
+        era_res = player_all["pitcher_era"]
+        print("\n  ── All pitcher model comparison ──")
+        print(f"    ERA  (3feat):  p={era_res['paired_t_p']:.6f}  "
+              f"MAE Δ={era_res['delta_mae']:+.5f}")
+        if pitcher_fip_results:
+            print(f"    FIP  (3feat):  p={pitcher_fip_results['paired_t_p']:.6f}  "
+                  f"MAE Δ={pitcher_fip_results['delta_mae']:+.5f}")
+        print(f"    ERA  (5feat):  p={pitcher_k9_results['paired_t_p']:.6f}  "
+              f"MAE Δ={pitcher_k9_results['delta_mae']:+.5f}")
+        if pitcher_fip_k9_results:
+            print(f"    FIP  (5feat):  p={pitcher_fip_k9_results['paired_t_p']:.6f}  "
+                  f"MAE Δ={pitcher_fip_k9_results['delta_mae']:+.5f}")
+    else:
+        print("\n[6] K/9 + BB/9 — SKIPPED (no data)")
+
     # ── Save results ──
     output = {
         "step": "11b_fip_pitcher_model",
@@ -624,6 +699,16 @@ def main():
             "n": len(p_fip_df),
             "features": ["K_pct", "BB_pct", "age_from_peak"],
             "player_level": pitcher_fip_results,
+        },
+        "pitcher_era_k9": {
+            "n": len(p_k9_df),
+            "features": ["K_pct", "BB_pct", "K_per_9", "BB_per_9", "age_from_peak"],
+            "player_level": pitcher_k9_results,
+        },
+        "pitcher_fip_k9": {
+            "n": len(p_fip_k9_df),
+            "features": ["K_pct", "BB_pct", "K_per_9", "BB_per_9", "age_from_peak"],
+            "player_level": pitcher_fip_k9_results,
         },
         "foreign_loocv": foreign,
         "recency_weighting": recency_results,
