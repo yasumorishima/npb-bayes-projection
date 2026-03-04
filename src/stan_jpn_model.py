@@ -1,5 +1,5 @@
 """
-Step 7a / 11: Japanese player Stan model with K%/BB%/age features.
+Step 7a / 11b: Japanese player Stan model with K%/BB%/age features.
 
 Marcel prediction serves as the prior mean. The Stan model tests whether
 K%/BB%/age (skill-level + aging) add predictive power beyond Marcel.
@@ -8,6 +8,8 @@ Model:
   Hitter:  actual_wOBA = Marcel_wOBA + delta_K * z_K + delta_BB * z_BB
                         + delta_BABIP * z_babip + delta_age * z_age + noise
   Pitcher: actual_ERA  = Marcel_ERA  + delta_K * z_K + delta_BB * z_BB
+                        + delta_age * z_age + noise
+  Pitcher: actual_FIP  = Marcel_FIP  + delta_K * z_K + delta_BB * z_BB
                         + delta_age * z_age + noise
 
 Training: 2018-2021 (using 2015-2020 history for Marcel)
@@ -117,6 +119,87 @@ def league_avg_era(pitchers_df: pd.DataFrame, year: int) -> float:
         return 3.80
     total_ip = sub["IP_dec"].sum()
     return float((sub["ERA"] * sub["IP_dec"]).sum() / total_ip) if total_ip > 0 else 3.80
+
+
+def compute_fip_column(pitchers_df: pd.DataFrame) -> pd.DataFrame:
+    """Add FIP column to pitchers DataFrame.
+
+    raw_FIP = (13*HRA + 3*(BB+HBP) - 2*SO) / IP_dec
+    cFIP = league_avg_ERA - league_avg_raw_FIP (per year, IP >= MIN_IP)
+    FIP = raw_FIP + cFIP
+    """
+    df = pitchers_df.copy()
+    df["_IP_dec"] = df["IP"].apply(ip_to_decimal)
+    df["_ERA_num"] = pd.to_numeric(df["ERA"], errors="coerce")
+    df["_raw_FIP"] = (
+        13 * df["HRA"] + 3 * (df["BB"] + df["HBP"]) - 2 * df["SO"]
+    ) / df["_IP_dec"].clip(lower=0.1)
+
+    cfip_map = {}
+    for yr, grp in df[df["_IP_dec"] >= MIN_IP].groupby("year"):
+        grp = grp[grp["_ERA_num"].notna()]
+        if len(grp) == 0:
+            continue
+        total_ip = grp["_IP_dec"].sum()
+        lg_era = float((grp["_ERA_num"] * grp["_IP_dec"]).sum() / total_ip)
+        lg_raw_fip = float((grp["_raw_FIP"] * grp["_IP_dec"]).sum() / total_ip)
+        cfip_map[int(yr)] = lg_era - lg_raw_fip
+
+    df["FIP"] = df["_raw_FIP"] + df["year"].map(cfip_map)
+    df = df.drop(columns=["_IP_dec", "_ERA_num", "_raw_FIP"])
+    return df
+
+
+def league_avg_fip(pitchers_df: pd.DataFrame, year: int) -> float:
+    """IP-weighted league average FIP from the prior year."""
+    sub = pitchers_df[pitchers_df["year"] == year - 1].copy()
+    sub["IP_dec"] = sub["IP"].apply(ip_to_decimal)
+    sub = sub[(sub["IP_dec"] >= MIN_IP) & sub["FIP"].notna()]
+    if len(sub) == 0:
+        return 3.80
+    total_ip = sub["IP_dec"].sum()
+    return float((sub["FIP"] * sub["IP_dec"]).sum() / total_ip) if total_ip > 0 else 3.80
+
+
+def compute_marcel_fip(pitchers_df: pd.DataFrame, target_year: int) -> pd.DataFrame:
+    """Marcel FIP projection for all pitchers with sufficient history."""
+    lg_avg = league_avg_fip(pitchers_df, target_year)
+    rows = []
+    for player, grp in pitchers_df.groupby("player"):
+        w_total = fip_sum = 0.0
+        for lag, w in MARCEL_WEIGHTS.items():
+            yr = target_year - lag
+            row = grp[grp["year"] == yr]
+            if len(row) == 0:
+                continue
+            ip = ip_to_decimal(float(row.iloc[0]["IP"]))
+            fip = row.iloc[0]["FIP"]
+            if ip < MIN_IP or pd.isna(fip):
+                continue
+            fip = float(fip)
+            w_total += w * ip
+            fip_sum += w * ip * fip
+        if w_total == 0:
+            continue
+        recent = grp[grp["year"] == target_year - 1]
+        if len(recent) == 0:
+            continue
+        team = recent.iloc[0]["team"]
+        fip_raw = fip_sum / w_total
+        fip_proj = (fip_raw * w_total + lg_avg * REGRESS_IP_PITCH) / (w_total + REGRESS_IP_PITCH)
+        rows.append({"player": player, "team": team, "year": target_year,
+                     "marcel_fip": round(fip_proj, 4), "lg_avg_fip": round(lg_avg, 4)})
+    return pd.DataFrame(rows)
+
+
+def add_actual_fip(pitchers_df: pd.DataFrame, target_year: int,
+                   df: pd.DataFrame) -> pd.DataFrame:
+    """Merge actual FIP from the target year."""
+    actual = pitchers_df[pitchers_df["year"] == target_year][["player", "IP", "FIP"]].copy()
+    actual["actual_IP"] = actual["IP"].apply(ip_to_decimal)
+    actual["actual_fip"] = actual["FIP"]
+    actual = actual[(actual["actual_IP"] >= MIN_IP) & actual["actual_fip"].notna()]
+    return df.merge(actual[["player", "actual_IP", "actual_fip"]], on="player", how="inner")
 
 
 def compute_marcel_woba(saber_df: pd.DataFrame, target_year: int) -> pd.DataFrame:
@@ -234,8 +317,12 @@ def build_dataset(saber_df, pitchers_df, years, bday_df=None):
 
     If bday_df is provided, adds age_from_peak column (players without birthday
     data are dropped).
+
+    Returns (hitters, pitchers_era, pitchers_fip). pitchers_fip is empty
+    DataFrame if pitchers_df has no FIP column.
     """
-    hit_rows, pit_rows = [], []
+    hit_rows, pit_rows, pit_fip_rows = [], [], []
+    has_fip = "FIP" in pitchers_df.columns
     for yr in years:
         m_h = compute_marcel_woba(saber_df, yr)
         if len(m_h) == 0:
@@ -251,16 +338,27 @@ def build_dataset(saber_df, pitchers_df, years, bday_df=None):
         m_p = add_actual_era(pitchers_df, yr, m_p)
         pit_rows.append(m_p)
 
+        if has_fip:
+            m_pf = compute_marcel_fip(pitchers_df, yr)
+            if len(m_pf) > 0:
+                m_pf = add_kpct_bbpct_pitcher(pitchers_df, yr, m_pf)
+                m_pf = add_actual_fip(pitchers_df, yr, m_pf)
+                if len(m_pf) > 0:
+                    pit_fip_rows.append(m_pf)
+
     hitters  = pd.concat(hit_rows,  ignore_index=True) if hit_rows  else pd.DataFrame()
     pitchers = pd.concat(pit_rows,  ignore_index=True) if pit_rows  else pd.DataFrame()
+    pitchers_fip = pd.concat(pit_fip_rows, ignore_index=True) if pit_fip_rows else pd.DataFrame()
 
     if bday_df is not None:
         if len(hitters) > 0:
             hitters = add_age_from_peak(hitters, bday_df)
         if len(pitchers) > 0:
             pitchers = add_age_from_peak(pitchers, bday_df)
+        if len(pitchers_fip) > 0:
+            pitchers_fip = add_age_from_peak(pitchers_fip, bday_df)
 
-    return hitters, pitchers
+    return hitters, pitchers, pitchers_fip
 
 
 def standardize_features(train_df, test_df, feat_cols):
@@ -302,12 +400,12 @@ def main(draws=1000, warmup=500):
 
     # ── Build datasets ────────────────────────────────────────────────────────
     print("\nBuilding training data (2018-2021)...")
-    train_h, train_p = build_dataset(saber, pitchers, TRAIN_YEARS, bday_df)
+    train_h, train_p, _ = build_dataset(saber, pitchers, TRAIN_YEARS, bday_df)
     print(f"  Hitters train:  {len(train_h):3d}")
     print(f"  Pitchers train: {len(train_p):3d}")
 
     print("Building backtest data (2022-2025)...")
-    test_h, test_p = build_dataset(saber, pitchers, BACKTEST_YEARS, bday_df)
+    test_h, test_p, _ = build_dataset(saber, pitchers, BACKTEST_YEARS, bday_df)
     print(f"  Hitters test:   {len(test_h):3d}")
     print(f"  Pitchers test:  {len(test_p):3d}")
 

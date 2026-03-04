@@ -1,12 +1,13 @@
-"""Step 11: Statistical validation — age curve + recency weighting.
+"""Step 11b: Statistical validation — age curve + recency weighting + FIP.
 
-Four analyses:
+Five analyses:
   1. Player-level significance tests (n=1000+ hitters + pitchers)
      — 8-year LOO-CV with Ridge regression as Stan approximation
      — Now includes age_from_peak feature
   2. 2021 (COVID year) exclusion — 7-year results
   3. Foreign player Stan v1 LOO-CV (2015-2025)
   4. Recency weighting comparison (λ = 1.0, 0.9, 0.8)
+  5. FIP vs ERA pitcher model comparison
 
 Ridge alphas (= sigma^2 / tau^2, posterior mean approximation):
   Japanese hitter:  0.053^2 / 0.05^2 = 1.12  (4 features: K%, BB%, BABIP, age)
@@ -31,6 +32,7 @@ from scipy import stats
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from stan_jpn_model import (
     build_dataset,
+    compute_fip_column,
     ip_to_decimal,
     load_birthday_df,
     standardize_features,
@@ -92,22 +94,24 @@ def run_jpn_loocv(decay_lambda=1.0):
             1.0 = no decay (uniform), 0.9 = mild decay, 0.8 = strong decay.
 
     Returns:
-        Player-level prediction DataFrames for hitters and pitchers.
+        (h_df, p_df, p_fip_df) — Player-level prediction DataFrames for
+        hitters, pitchers (ERA), and pitchers (FIP).
     """
     saber = pd.read_csv(RAW_DIR / "npb_sabermetrics_2015_2025.csv", encoding="utf-8-sig")
     pitchers = pd.read_csv(RAW_DIR / "npb_pitchers_2015_2025.csv", encoding="utf-8-sig")
     saber = saber.dropna(subset=["wOBA"])
+    pitchers = compute_fip_column(pitchers)  # Add FIP column
     bday_df = load_birthday_df()
 
     feat_h = ["K_pct", "BB_pct", "BABIP", "age_from_peak"]
     feat_p = ["K_pct", "BB_pct", "age_from_peak"]
 
-    all_h, all_p = [], []
+    all_h, all_p, all_p_fip = [], [], []
 
     for hold_yr in JPN_YEARS:
         train_years = [y for y in JPN_YEARS if y != hold_yr]
-        train_h, train_p = build_dataset(saber, pitchers, train_years, bday_df)
-        test_h, test_p = build_dataset(saber, pitchers, [hold_yr], bday_df)
+        train_h, train_p, train_p_fip = build_dataset(saber, pitchers, train_years, bday_df)
+        test_h, test_p, test_p_fip = build_dataset(saber, pitchers, [hold_yr], bday_df)
 
         if len(test_h) == 0 or len(test_p) == 0:
             continue
@@ -133,7 +137,7 @@ def run_jpn_loocv(decay_lambda=1.0):
                 "stan": stan_woba[i], "actual_PA": row["actual_PA"],
             })
 
-        # Pitchers
+        # Pitchers (ERA)
         train_z_p, test_z_p, _, _ = standardize_features(train_p, test_p, feat_p)
         y_p = (train_p["actual_era"] - train_p["marcel_era"]).values
 
@@ -154,66 +158,92 @@ def run_jpn_loocv(decay_lambda=1.0):
                 "stan": stan_era[i], "actual_IP": row["actual_IP"],
             })
 
-    return pd.DataFrame(all_h), pd.DataFrame(all_p)
+        # Pitchers (FIP)
+        if len(test_p_fip) > 0 and len(train_p_fip) > 0:
+            train_z_pf, test_z_pf, _, _ = standardize_features(
+                train_p_fip, test_p_fip, feat_p)
+            y_pf = (train_p_fip["actual_fip"] - train_p_fip["marcel_fip"]).values
+
+            if decay_lambda < 1.0:
+                w_pf = np.array([decay_lambda ** abs(hold_yr - yr)
+                                 for yr in train_p_fip["year"].values])
+                delta_pf, _ = weighted_ridge_fit_predict(
+                    train_z_pf, y_pf, test_z_pf, ALPHA_JPN_P, w_pf)
+            else:
+                delta_pf, _ = ridge_fit_predict(
+                    train_z_pf, y_pf, test_z_pf, ALPHA_JPN_P)
+
+            stan_fip = test_p_fip["marcel_fip"].values + delta_pf
+
+            for i, (_, row) in enumerate(test_p_fip.iterrows()):
+                all_p_fip.append({
+                    "year": hold_yr, "player": row["player"], "team": row["team"],
+                    "actual": row["actual_fip"], "marcel": row["marcel_fip"],
+                    "stan": stan_fip[i], "actual_IP": row["actual_IP"],
+                })
+
+    return pd.DataFrame(all_h), pd.DataFrame(all_p), pd.DataFrame(all_p_fip)
+
+
+def _metric_test(df, label, metric_name):
+    """Paired t-test, Wilcoxon, bootstrap on player-level absolute errors for one metric."""
+    err_m = np.abs(df["actual"].values - df["marcel"].values)
+    err_s = np.abs(df["actual"].values - df["stan"].values)
+    diff = err_m - err_s   # positive → Stan better
+
+    n = len(diff)
+    mean_diff = float(np.mean(diff))
+    sd_diff = float(np.std(diff, ddof=1)) if n > 1 else 1.0
+
+    # Paired t-test
+    t_stat, t_p = stats.ttest_rel(err_m, err_s)
+    # Wilcoxon signed-rank
+    try:
+        w_stat, w_p = stats.wilcoxon(diff)
+    except ValueError:
+        w_stat, w_p = float("nan"), float("nan")
+
+    # Bootstrap P(Stan < Marcel)
+    rng = np.random.default_rng(42)
+    boot_means = [np.mean(diff[rng.integers(0, n, n)]) for _ in range(10000)]
+    p_stan_better = float(np.mean([m > 0 for m in boot_means]))
+
+    # Cohen's d
+    d = mean_diff / sd_diff if sd_diff > 0 else 0.0
+
+    stan_wins = int(np.sum(err_s < err_m))
+
+    result = {
+        "n": n,
+        "mae_marcel": round(float(np.mean(err_m)), 5),
+        "mae_stan": round(float(np.mean(err_s)), 5),
+        "delta_mae": round(mean_diff, 5),
+        "paired_t_stat": round(float(t_stat), 4),
+        "paired_t_p": round(float(t_p), 6),
+        "wilcoxon_p": round(float(w_p), 6),
+        "bootstrap_p_stan_better": round(p_stan_better, 4),
+        "cohens_d": round(float(d), 4),
+        "stan_win_rate": f"{stan_wins}/{n} ({100 * stan_wins / n:.1f}%)",
+    }
+
+    print(f"\n  {label} — {metric_name} (n={n}):")
+    print(f"    MAE Marcel={np.mean(err_m):.5f}  Stan={np.mean(err_s):.5f}  "
+          f"Δ={mean_diff:+.5f}")
+    print(f"    Paired t: t={t_stat:.3f}, p={t_p:.6f}")
+    print(f"    Wilcoxon: p={w_p:.6f}")
+    print(f"    Bootstrap P(Stan<Marcel): {p_stan_better:.4f}")
+    print(f"    Cohen's d: {d:.4f}")
+    print(f"    Stan wins: {stan_wins}/{n} ({100 * stan_wins / n:.1f}%)")
+
+    return result
 
 
 def player_level_tests(h_df, p_df, label="All years"):
     """Paired t-test, Wilcoxon, bootstrap on player-level absolute errors."""
-    results = {}
-
-    for name, df, col_m, col_s in [
-        ("hitter_woba", h_df, "marcel", "stan"),
-        ("pitcher_era", p_df, "marcel", "stan"),
-    ]:
-        err_m = np.abs(df["actual"].values - df[col_m].values)
-        err_s = np.abs(df["actual"].values - df[col_s].values)
-        diff = err_m - err_s   # positive → Stan better
-
-        n = len(diff)
-        mean_diff = float(np.mean(diff))
-        sd_diff = float(np.std(diff, ddof=1)) if n > 1 else 1.0
-
-        # Paired t-test
-        t_stat, t_p = stats.ttest_rel(err_m, err_s)
-        # Wilcoxon signed-rank
-        try:
-            w_stat, w_p = stats.wilcoxon(diff)
-        except ValueError:
-            w_stat, w_p = float("nan"), float("nan")
-
-        # Bootstrap P(Stan < Marcel)
-        rng = np.random.default_rng(42)
-        boot_means = [np.mean(diff[rng.integers(0, n, n)]) for _ in range(10000)]
-        p_stan_better = float(np.mean([m > 0 for m in boot_means]))
-
-        # Cohen's d
-        d = mean_diff / sd_diff if sd_diff > 0 else 0.0
-
-        stan_wins = int(np.sum(err_s < err_m))
-
-        results[name] = {
-            "n": n,
-            "mae_marcel": round(float(np.mean(err_m)), 5),
-            "mae_stan": round(float(np.mean(err_s)), 5),
-            "delta_mae": round(mean_diff, 5),
-            "paired_t_stat": round(float(t_stat), 4),
-            "paired_t_p": round(float(t_p), 6),
-            "wilcoxon_p": round(float(w_p), 6),
-            "bootstrap_p_stan_better": round(p_stan_better, 4),
-            "cohens_d": round(float(d), 4),
-            "stan_win_rate": f"{stan_wins}/{n} ({100 * stan_wins / n:.1f}%)",
-        }
-
-        print(f"\n  {label} — {name} (n={n}):")
-        print(f"    MAE Marcel={np.mean(err_m):.5f}  Stan={np.mean(err_s):.5f}  "
-              f"Δ={mean_diff:+.5f}")
-        print(f"    Paired t: t={t_stat:.3f}, p={t_p:.6f}")
-        print(f"    Wilcoxon: p={w_p:.6f}")
-        print(f"    Bootstrap P(Stan<Marcel): {p_stan_better:.4f}")
-        print(f"    Cohen's d: {d:.4f}")
-        print(f"    Stan wins: {stan_wins}/{n} ({100 * stan_wins / n:.1f}%)")
-
-    return results
+    return {
+        "hitter_woba": _metric_test(h_df, label, "hitter_woba"),
+        "pitcher_era": _metric_test(p_df, label, "pitcher_era"),
+    }
 
 
 def team_level_mae(h_df, p_df, years=None, label="All years"):
@@ -518,8 +548,9 @@ def main():
 
     # ── 1. Japanese LOO-CV (λ=1.0, uniform weighting) ──
     print("\n[1] Japanese Player 8-year LOO-CV (2018-2025) — λ=1.0 (uniform)")
-    h_df, p_df = run_jpn_loocv(decay_lambda=1.0)
-    print(f"  Collected: {len(h_df)} hitter-years, {len(p_df)} pitcher-years")
+    h_df, p_df, p_fip_df = run_jpn_loocv(decay_lambda=1.0)
+    print(f"  Collected: {len(h_df)} hitter-years, {len(p_df)} pitcher-years"
+          f", {len(p_fip_df)} pitcher-FIP-years")
 
     # 1a. Player-level significance tests
     print("\n[1a] Player-level significance tests — ALL years")
@@ -548,7 +579,7 @@ def main():
     recency_results = {}
     for lam in [1.0, 0.9, 0.8]:
         print(f"\n  --- λ = {lam} ---")
-        h_lam, p_lam = run_jpn_loocv(decay_lambda=lam)
+        h_lam, p_lam, _ = run_jpn_loocv(decay_lambda=lam)
         res = player_level_tests(h_lam, p_lam, f"λ={lam}")
         recency_results[str(lam)] = {
             "n_hitters": len(h_lam),
@@ -556,9 +587,28 @@ def main():
             "player_level": res,
         }
 
+    # ── 5. FIP vs ERA comparison ──
+    pitcher_fip_results = {}
+    if len(p_fip_df) > 0:
+        print("\n[5] FIP — Pitcher LOO-CV (2018-2025)")
+        pitcher_fip_results = _metric_test(
+            p_fip_df, "All 8 years (λ=1.0)", "pitcher_fip")
+
+        # Side-by-side ERA vs FIP summary
+        era_res = player_all["pitcher_era"]
+        print("\n  ── ERA vs FIP comparison ──")
+        print(f"    ERA:  MAE Marcel={era_res['mae_marcel']:.5f}  "
+              f"Stan={era_res['mae_stan']:.5f}  "
+              f"p={era_res['paired_t_p']:.6f}")
+        print(f"    FIP:  MAE Marcel={pitcher_fip_results['mae_marcel']:.5f}  "
+              f"Stan={pitcher_fip_results['mae_stan']:.5f}  "
+              f"p={pitcher_fip_results['paired_t_p']:.6f}")
+    else:
+        print("\n[5] FIP — SKIPPED (no FIP data)")
+
     # ── Save results ──
     output = {
-        "step": "11_age_curve_recency_weighting",
+        "step": "11b_fip_pitcher_model",
         "japanese_loocv": {
             "years": JPN_YEARS,
             "n_hitters": len(h_df),
@@ -569,6 +619,11 @@ def main():
             "team_level_all": team_all,
             "player_level_no2021": player_no21,
             "team_level_no2021": team_no21,
+        },
+        "pitcher_fip": {
+            "n": len(p_fip_df),
+            "features": ["K_pct", "BB_pct", "age_from_peak"],
+            "player_level": pitcher_fip_results,
         },
         "foreign_loocv": foreign,
         "recency_weighting": recency_results,
