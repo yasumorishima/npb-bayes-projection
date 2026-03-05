@@ -424,19 +424,41 @@ def run_backtest(n_sim: int = N_SIM, seed: int = 42) -> None:
     )
     print(f"\nSaved -> {OUT_DIR / 'backtest_results.csv'}")
 
-    # backtest_results_comparison.csv: No PF vs With PF を横並び比較
-    df_cmp = df_pf[["year", "league", "team", "pf_5yr", "actual_W", "actual_RS", "actual_RA"]].copy()
-    df_cmp["pred_RS_base"]    = df_base["pred_RS"].values
-    df_cmp["pred_RA_base"]    = df_base["pred_RA"].values
-    df_cmp["median_wins_base"] = df_base["median_wins"].values
-    df_cmp["error_base"]      = df_base["error"].values
-    df_cmp["covered_base"]    = df_base["covered"].values
-    df_cmp["pred_RS_pf"]      = df_pf["pred_RS"].values
-    df_cmp["pred_RA_pf"]      = df_pf["pred_RA"].values
-    df_cmp["median_wins_pf"]  = df_pf["median_wins"].values
-    df_cmp["error_pf"]        = df_pf["error"].values
-    df_cmp["covered_pf"]      = df_pf["covered"].values
-    df_cmp["wins_delta"]      = (df_pf["median_wins"] - df_base["median_wins"]).round(1).values
+    # backtest_comparison.csv: No PF vs With PF を全カラム横並び比較
+    # RS/RA誤差 = pred - actual（正=過大推定、負=過小推定）
+    df_base_idx = df_base.reset_index(drop=True)
+    df_pf_idx   = df_pf.reset_index(drop=True)
+
+    df_cmp = df_pf_idx[["year", "league", "team", "pf_5yr",
+                         "actual_W", "actual_RS", "actual_RA"]].copy()
+
+    # No PF 列
+    df_cmp["pred_RS_base"]     = df_base_idx["pred_RS"]
+    df_cmp["pred_RA_base"]     = df_base_idx["pred_RA"]
+    df_cmp["rs_error_base"]    = (df_base_idx["pred_RS"] - df_pf_idx["actual_RS"]).round(1)
+    df_cmp["ra_error_base"]    = (df_base_idx["pred_RA"] - df_pf_idx["actual_RA"]).round(1)
+    df_cmp["median_wins_base"] = df_base_idx["median_wins"]
+    df_cmp["ci_lo_base"]       = df_base_idx["ci_lo"]
+    df_cmp["ci_hi_base"]       = df_base_idx["ci_hi"]
+    df_cmp["error_base"]       = df_base_idx["error"]
+    df_cmp["covered_base"]     = df_base_idx["covered"]
+
+    # With PF 列
+    df_cmp["pred_RS_pf"]       = df_pf_idx["pred_RS"]
+    df_cmp["pred_RA_pf"]       = df_pf_idx["pred_RA"]
+    df_cmp["rs_error_pf"]      = (df_pf_idx["pred_RS"] - df_pf_idx["actual_RS"]).round(1)
+    df_cmp["ra_error_pf"]      = (df_pf_idx["pred_RA"] - df_pf_idx["actual_RA"]).round(1)
+    df_cmp["median_wins_pf"]   = df_pf_idx["median_wins"]
+    df_cmp["ci_lo_pf"]         = df_pf_idx["ci_lo"]
+    df_cmp["ci_hi_pf"]         = df_pf_idx["ci_hi"]
+    df_cmp["error_pf"]         = df_pf_idx["error"]
+    df_cmp["covered_pf"]       = df_pf_idx["covered"]
+
+    # 差分
+    df_cmp["wins_delta"]       = (df_pf_idx["median_wins"] - df_base_idx["median_wins"]).round(1)
+    df_cmp["rs_delta"]         = (df_pf_idx["pred_RS"] - df_base_idx["pred_RS"]).round(1)
+    df_cmp["ra_delta"]         = (df_pf_idx["pred_RA"] - df_base_idx["pred_RA"]).round(1)
+
     df_cmp.sort_values(["year", "league", "team"]).to_csv(
         OUT_DIR / "backtest_comparison.csv", index=False, encoding="utf-8-sig"
     )
