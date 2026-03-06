@@ -6,30 +6,32 @@ Successor to [npb-prediction](https://github.com/yasumorishima/npb-prediction)'s
 
 ## Results
 
-### Marcel vs Stan Comparison (Team-Level, 2022-2025)
+### Player-Level Accuracy (LOO-CV, 2018-2025)
 
-| Model | Team Win MAE | vs Marcel |
+| Model | n | Marcel MAE | Stan MAE | p-value | Bootstrap P |
+|---|---|---|---|---|---|
+| **Japanese hitters (wOBA)** | 2,208 | 0.05023 | **0.04980** | **p=0.060** | 97.1% |
+| **Japanese pitchers (ERA)** | 2,164 | 1.23008 | **1.22241** | **p=0.057** | 97.1% |
+| Foreign first-year hitters (wOBA) | 78 | 0.0387 | **0.0385** | p=0.914 | — |
+| Foreign first-year pitchers (ERA) | 91 | 0.8457 | 0.8733 | p=0.289 | — |
+
+Stan improves both hitter wOBA and pitcher ERA at near-significant levels (p~0.06, bootstrap 97%).
+
+### Team-Level Accuracy (LOO-CV, 2018-2025, n=96)
+
+| Model | Win MAE | vs Marcel |
 |---|---|---|
-| Marcel (baseline) | 10.565 wins | — |
-| Stan (K%/BB% only) | 10.531 wins | -0.034 |
-| **Stan (+BABIP)** | **10.502 wins** | **-0.063 ✓** |
+| Marcel (baseline) | 6.725 wins | — |
+| Stan (+K%/BB%/BABIP) | 6.923 wins | +0.198 |
 
-Stan beats Marcel in 3 of 4 backtest years (2022, 2023, 2024).
-
-### Player-Level Accuracy (2022-2025 backtest)
-
-| Model | Marcel MAE | Stan MAE | Improvement |
-|---|---|---|---|
-| Japanese hitters (wOBA) | 0.0378 | 0.0378 | — (tied) |
-| Japanese pitchers (ERA) | 0.9368 | **0.9330** | **-0.4%** |
-| Foreign first-year hitters (wOBA) | 0.0337 | **0.0325** | **-3.8%** |
-| Foreign first-year pitchers (ERA) | 0.749 | **0.736** | **-1.7%** |
+Stan's player-level improvement doesn't fully translate to team wins due to PA-weighting: Marcel is already accurate for high-PA regulars, while Stan's advantage concentrates on low-PA players who contribute less to team totals.
 
 ### Key Findings
 
-- **Japanese pitchers**: K% provides signal beyond Marcel ERA (`delta_K = -0.133`). ERA is influenced by luck (BABIP); K% is more stable year-to-year.
-- **Japanese hitters**: K%/BB% don't add beyond Marcel wOBA (wOBA already incorporates these). BABIP (luck component) does add signal (`delta_BABIP = -0.006`): high BABIP in t-1 → Marcel overestimates year t.
-- **Foreign first-year players**: K%/BB% from previous league add significant signal for both hitters and pitchers.
+- **Japanese pitchers**: K% and K/9 provide signal beyond Marcel ERA (ERA+5feat: **p=0.012**). ERA is influenced by luck (BABIP); K% is more stable year-to-year.
+- **Japanese hitters**: K%/BB% don't add beyond Marcel wOBA (wOBA already incorporates these). BABIP (luck component) does add signal (`delta_BABIP = -0.006`): high BABIP in t-1 → Marcel overestimates year t. **p=0.0004** with full features.
+- **Foreign first-year players**: K%/BB% from previous league add signal, but sample size is too small for statistical significance.
+- **PA quartile analysis**: Stan wins most in Q1 (low PA, 30-64): 55% win rate, MAE +0.003. High-PA regulars (Q4): ~tied.
 
 ### Team Backtest (Marcel baseline + Park Factor correction, 2018-2025)
 
@@ -57,8 +59,8 @@ Pitcher: actual_ERA  = Marcel_ERA  + δ_K·z_K + δ_BB·z_BB + noise
 ```
 
 - Marcel 3-year weighted average (weights 5:4:3) as prior mean
-- K%/BB%/BABIP z-scored on training-set statistics
-- Training: 2018-2021 | Backtest: 2022-2025
+- Features: K%, BB%, BABIP, age_from_peak, pa/ip_stability, prev_woba_dev_sq/prev_babip_p
+- Leave-one-out CV across 2018-2025 (8 years, n=2,208 hitters / 2,164 pitchers)
 
 ### Foreign First-Year Players
 
@@ -129,6 +131,9 @@ npb-bayes-projection/
 ├── src/
 │   ├── stan_jpn_model.py        # Japanese player model runner
 │   ├── stan_model.py            # Foreign player model runner
+│   ├── statistical_validation.py # LOO-CV + paired t-test + bootstrap (Steps 10-15)
+│   ├── diagnose_big_misses.py   # YoY analysis of |err|>10W team-years
+│   ├── analyze_coverage_gap.py  # PA/IP coverage gap diagnosis
 │   ├── team_compare.py          # Marcel vs Stan team-level MAE comparison
 │   ├── team_sim.py              # Monte Carlo team standings simulation (+ PF backtest)
 │   ├── compare_pf_methods.py    # 3-way park factor comparison (No PF / single-year / 5yr avg)
@@ -142,13 +147,15 @@ npb-bayes-projection/
 ## Running via GitHub Actions
 
 ```bash
-gh workflow run build_factors.yml -f step=run_jpn_model      # Japanese player Stan model
-gh workflow run build_factors.yml -f step=run_stan_model     # Foreign player Stan model
-gh workflow run build_factors.yml -f step=team_compare       # Marcel vs Stan comparison
-gh workflow run build_factors.yml -f step=team_sim           # Team standings simulation (2026)
-gh workflow run build_factors.yml -f step=team_backtest      # Backtest 2018-2025
-gh workflow run build_factors.yml -f step=compare_pf_methods # No PF vs single-year vs PF_5yr
-gh workflow run build_factors.yml -f step=analyze_pf         # Park factor analysis report
+gh workflow run build_factors.yml -f step=run_jpn_model           # Japanese player Stan model
+gh workflow run build_factors.yml -f step=run_stan_model          # Foreign player Stan model
+gh workflow run build_factors.yml -f step=statistical_validation  # LOO-CV + significance tests (Steps 10-15)
+gh workflow run build_factors.yml -f step=diagnose_big_misses     # Team-year big miss analysis
+gh workflow run build_factors.yml -f step=team_compare            # Marcel vs Stan comparison
+gh workflow run build_factors.yml -f step=team_sim                # Team standings simulation (2026)
+gh workflow run build_factors.yml -f step=team_backtest           # Backtest 2018-2025
+gh workflow run build_factors.yml -f step=compare_pf_methods      # No PF vs single-year vs PF_5yr
+gh workflow run build_factors.yml -f step=analyze_pf              # Park factor analysis report
 ```
 
 ## License
