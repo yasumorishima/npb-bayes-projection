@@ -25,6 +25,9 @@ on:
           - generate_2026_stan
           - analyze_pf
           - compare_pf_methods
+          - foreign_v2
+          - foreign_v2_loo
+          - foreign_v2_expanding
 
 permissions:
   contents: write
@@ -54,8 +57,8 @@ jobs:
         if: inputs.step == 'run_model'
         run: pip install "pymc>=5.0" "arviz>=0.15"
 
-      - name: Install cmdstanpy + ArviZ (run_stan_model / run_jpn_model)
-        if: inputs.step == 'run_stan_model' || inputs.step == 'run_jpn_model'
+      - name: Install cmdstanpy + ArviZ (Stan models)
+        if: inputs.step == 'run_stan_model' || inputs.step == 'run_jpn_model' || startsWith(inputs.step, 'foreign_v2')
         run: |
           pip install -r requirements-model.txt
           python -c "from cmdstanpy import install_cmdstan; install_cmdstan()"
@@ -125,6 +128,18 @@ jobs:
         if: inputs.step == 'compare_pf_methods'
         run: python src/compare_pf_methods.py
 
+      - name: Foreign v2 — fit full model + posterior params
+        if: inputs.step == 'foreign_v2'
+        run: python src/foreign_v2_model.py --draws 2000 --warmup 1000 --fit-only
+
+      - name: Foreign v2 — LOO cross-validation (heavy, ~2h)
+        if: inputs.step == 'foreign_v2_loo'
+        run: python src/foreign_v2_model.py --draws 1000 --warmup 500 --loo-cv
+
+      - name: Foreign v2 — expanding-window CV
+        if: inputs.step == 'foreign_v2_expanding'
+        run: python src/foreign_v2_model.py --draws 1000 --warmup 500 --expanding-cv
+
       - name: Commit results to repo
         run: |
           git config user.name "github-actions[bot]"
@@ -144,3 +159,24 @@ jobs:
           name: model-output
           path: data/
           retention-days: 30
+
+      - name: Discord notification on completion
+        if: always() && startsWith(inputs.step, 'foreign_v2')
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "No Discord webhook configured, skipping"
+            exit 0
+          fi
+          STATUS="${{ job.status }}"
+          STEP="${{ inputs.step }}"
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          if [ "$STATUS" = "success" ]; then
+            EMOJI="✅"
+          else
+            EMOJI="❌"
+          fi
+          curl -s -H "Content-Type: application/json" \
+            -d "{\"content\": \"${EMOJI} **npb-stan-research** \`${STEP}\` ${STATUS}\\n${RUN_URL}\"}" \
+            "$DISCORD_WEBHOOK_URL"
