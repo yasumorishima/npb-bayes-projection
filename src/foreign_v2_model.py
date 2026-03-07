@@ -628,8 +628,11 @@ def check_diagnostics(fit):
     diag = fit.diagnose()
     print(diag)
     summary = fit.summary()
-    max_rhat = summary["R_hat"].max()
-    min_neff = summary["N_Eff"].min()
+    # cmdstanpy >= 1.2 uses 'R_hat'/'N_Eff', newer versions may use 'rhat'/'ess_bulk'
+    rhat_col = "R_hat" if "R_hat" in summary.columns else "rhat"
+    neff_col = "N_Eff" if "N_Eff" in summary.columns else "ess_bulk"
+    max_rhat = summary[rhat_col].max() if rhat_col in summary.columns else float("nan")
+    min_neff = summary[neff_col].min() if neff_col in summary.columns else float("nan")
     print(f"Max R-hat: {max_rhat:.4f}")
     print(f"Min N_Eff: {min_neff:.0f}")
     if max_rhat > 1.05:

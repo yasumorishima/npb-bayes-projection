@@ -69,7 +69,7 @@ model {
       + beta_middle_inf * is_middle_inf[n]
       + beta_second_year * is_second_year[n];
 
-    real sigma_n = sigma_base * exp(gamma_pa * z_log_pa[n]);
+    real sigma_n = sigma_base * exp(fmin(gamma_pa * z_log_pa[n], 2.0));
 
     y[n] ~ normal(mu_n, sigma_n);
   }
@@ -89,7 +89,7 @@ generated quantities {
       + beta_catcher * is_catcher[n]
       + beta_middle_inf * is_middle_inf[n]
       + beta_second_year * is_second_year[n];
-    real sigma_n = sigma_base * exp(gamma_pa * z_log_pa[n]);
+    real sigma_n = sigma_base * exp(fmin(gamma_pa * z_log_pa[n], 2.0));
     y_rep[n] = normal_rng(mu_n, sigma_n);
     log_lik[n] = normal_lpdf(y[n] | mu_n, sigma_n);
   }
