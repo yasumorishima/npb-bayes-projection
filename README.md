@@ -1,4 +1,4 @@
-# npb-bayes-projection
+# npb-stan-research
 
 NPB (Nippon Professional Baseball) player performance projection using Bayesian (Stan) methods.
 
@@ -64,6 +64,8 @@ Pitcher: actual_ERA  = Marcel_ERA  + δ_K·z_K + δ_BB·z_BB + noise
 
 ### Foreign First-Year Players
 
+#### v1 (current baseline)
+
 ```
 Hitter:  npb_wOBA = lg_avg + β_woba·z_woba + β_K·z_K + β_BB·z_BB + noise
 Pitcher: npb_ERA  = lg_avg + β_era·z_era + β_fip·z_fip + β_K·z_K + β_BB·z_BB + noise
@@ -72,6 +74,32 @@ Pitcher: npb_ERA  = lg_avg + β_era·z_era + β_fip·z_fip + β_K·z_K + β_BB·
 - League conversion factors (MLB→NPB, KBO→NPB, etc.) as prior
 - K%/BB%/FIP from previous league as features
 - Training: 2015-2019 | Backtest: 2020-2025
+- **Problem**: Uniform coefficients (w≈0.14) → all players regress to league average regardless of skill level
+
+#### v2 (in progress)
+
+v1 applies the same weight to all foreign players. A strong MLB hitter with low K% and high BB% gets the same prediction as a marginal AAA player. v2 fixes this with 7 improvements:
+
+| Improvement | Feature | v1 | v2 |
+|---|---|---|---|
+| 1. League-specific trust | `beta_woba[league]` | single β for all | **separate β for MLB / AAA / Other** |
+| 2. Non-linearity | `z_woba²` | linear only | **quadratic term** (extreme values matter more) |
+| 3. Interaction | `z_K × z_BB` | none | **low K% + high BB% combo evaluated** |
+| 4. Age correction | `age_from_peak` | none | **30+ discounted** |
+| 5. Position | `is_catcher`, `is_middle_inf` | none | **catcher / middle infield adjustment** |
+| 6. NPB adaptation | `is_second_year` | first year only | **2nd year boost estimated** |
+| 7. Sample size | `gamma_pa × log(PA)` | uniform σ | **fewer PA → wider uncertainty** |
+
+v2 preliminary results (full model fit, LOO-CV in progress):
+- **K% × BB% interaction is the strongest signal** (`beta_K_BB = +0.011 ± 0.005`)
+- Non-linear effect confirmed (`beta_woba_sq = +0.006 ± 0.003`)
+- 2nd year players improve by ~+.010 wOBA (`beta_second_year = +0.010 ± 0.008`)
+
+#### v3 (planned)
+
+Add MLB Statcast features for MLB-origin players (252 of 393):
+- Exit velocity, barrel rate, xwOBA, Whiff%, Stuff+, sprint speed
+- Same features that achieved +12.1% improvement over Marcel in [baseball-mlops](https://github.com/yasumorishima/baseball-mlops)
 
 ### Team Projection
 
@@ -124,13 +152,16 @@ npb-bayes-projection/
 │   ├── model/            # Stan model outputs (predictions, comparison JSON)
 │   └── projections/      # Team simulation outputs
 ├── models/
-│   ├── hitter_jpn.stan   # Japanese hitter Stan model (Marcel + K%/BB%/BABIP)
-│   ├── pitcher_jpn.stan  # Japanese pitcher Stan model (Marcel + K%/BB%)
-│   ├── hitter.stan       # Foreign first-year hitter Stan model
-│   └── pitcher.stan      # Foreign first-year pitcher Stan model
+│   ├── hitter_jpn.stan          # Japanese hitter Stan model (Marcel + K%/BB%/BABIP)
+│   ├── pitcher_jpn.stan         # Japanese pitcher Stan model (Marcel + K%/BB%)
+│   ├── hitter.stan              # Foreign first-year hitter Stan model (v1)
+│   ├── pitcher.stan             # Foreign first-year pitcher Stan model (v1)
+│   ├── hitter_foreign_v2.stan   # Foreign hitter v2 (7 improvements)
+│   └── pitcher_foreign_v2.stan  # Foreign pitcher v2 (7 improvements)
 ├── src/
 │   ├── stan_jpn_model.py        # Japanese player model runner
-│   ├── stan_model.py            # Foreign player model runner
+│   ├── stan_model.py            # Foreign player model runner (v1)
+│   ├── foreign_v2_model.py      # Foreign player v2 (data prep + Stan fit + LOO-CV)
 │   ├── statistical_validation.py # LOO-CV + paired t-test + bootstrap (Steps 10-15)
 │   ├── diagnose_big_misses.py   # YoY analysis of |err|>10W team-years
 │   ├── analyze_coverage_gap.py  # PA/IP coverage gap diagnosis
@@ -156,6 +187,9 @@ gh workflow run build_factors.yml -f step=team_sim                # Team standin
 gh workflow run build_factors.yml -f step=team_backtest           # Backtest 2018-2025
 gh workflow run build_factors.yml -f step=compare_pf_methods      # No PF vs single-year vs PF_5yr
 gh workflow run build_factors.yml -f step=analyze_pf              # Park factor analysis report
+gh workflow run build_factors.yml -f step=foreign_v2              # Foreign v2 — fit full model
+gh workflow run build_factors.yml -f step=foreign_v2_loo          # Foreign v2 — LOO-CV (~2h)
+gh workflow run build_factors.yml -f step=foreign_v2_expanding    # Foreign v2 — expanding-window CV
 ```
 
 ## License
